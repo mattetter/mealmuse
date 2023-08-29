@@ -1,0 +1,10 @@
+{% if shopping_list %}
+<div class="shopping-list">
+  <h2>Shopping List</h2>
+  <ul>
+    {% for item in shopping_list %}
+    <li>{{ item }}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}

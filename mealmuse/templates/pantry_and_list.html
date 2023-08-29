@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-3">
+    <div class="row">
+        <!-- Pantry Section -->
+        <div class="col-md-6">
+            <h3 class="h4">Pantry</h3>
+            <form action="/add_item" method="post" class="mb-2">
+                <div class="mb-2">
+                    <label for="name" class="form-label small">Name:</label>
+                    <input type="text" id="name" name="name" class="form-control form-control-sm">
+                </div>
+                <div class="mb-2">
+                    <label for="quantity" class="form-label small">Quantity:</label>
+                    <input type="number" id="quantity" name="quantity" step="1" class="form-control form-control-sm">
+                </div>
+                <input type="hidden" id="list_type" name="list_type" value="pantry">
+                <button type="submit" class="btn btn-primary btn-sm">Add to Pantry</button>
+            </form>
+            <ul class="list-group">
+            {% for item in pantry_items %}
+                <li class="list-group-item py-1 d-flex justify-content-between align-items-center small">
+                    {{ item.item.name }} - {{ item.quantity | round }} {{ item.unit or ''}}
+                    <a href="/remove_item/pantry/{{ item.id }}" class="btn btn-danger btn-sm">Remove</a>
+                </li>
+            {% endfor %}
+            </ul>
+        </div>
+
+        <!-- Shopping List Section -->
+        <div class="col-md-6">
+            <h3 class="h4">Shopping List</h3>
+            <form action="/add_item" method="post" class="mb-2">
+                <div class="mb-2">
+                    <label for="name" class="form-label small">Name:</label>
+                    <input type="text" id="name" name="name" class="form-control form-control-sm">
+                </div>
+                <div class="mb-2">
+                    <label for="quantity" class="form-label small">Quantity:</label>
+                    <input type="number" id="quantity" name="quantity" step="1" class="form-control form-control-sm">
+                </div>
+                <input type="hidden" id="list_type" name="list_type" value="shopping_list">
+                <button type="submit" class="btn btn-primary btn-sm">Add to Shopping List</button>
+            </form>
+            <ul class="list-group">
+            {% for item in shopping_list_items %}
+                <li class="list-group-item py-1 d-flex justify-content-between align-items-center small">
+                    {{ item.item.name }} - {{ item.quantity | round }} {{ item.unit or ''}}
+                    <a href="/remove_item/shopping_list/{{ item.id }}" class="btn btn-danger btn-sm">Remove</a>
+                </li>
+            {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

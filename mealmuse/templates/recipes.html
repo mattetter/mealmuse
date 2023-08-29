@@ -1,0 +1,20 @@
+{% if recipes %}
+<div>
+  <h2>Recipes</h2>
+  {% for recipe_name, recipe_details in recipes.items() %}
+    <h3>{{ recipe_name }}</h3>
+    <h4>Ingredients:</h4>
+    <ul>
+    {% for ingredient in recipe_details["ingredient_list"] %}
+    <li>{{ ingredient }}</li>
+    {% endfor %}
+    </ul>
+    <h4>Instructions:</h4>
+    <ul>
+      {% for instruction in recipe_details["cooking_instructions"] %}
+          <li>{{ instruction }}</li>
+      {% endfor %}
+    </ul>   
+  {% endfor %}
+</div>
+{% endif %}

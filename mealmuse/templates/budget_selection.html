@@ -1,0 +1,43 @@
+{% extends "meal_plan.html" %}
+
+{% block meal_plan_selection %}
+
+
+<div class="container mt-5">
+    <h2 class="mb-4">How much are you willing to spend on groceries for this plan?</h2>
+    <p class="mb-4">This will help us determine which recipes to include in your meal plan.</p>
+
+    <form action="{{ url_for('views.budget_selection') }}" method="post" class="needs-validation" novalidate>
+        <div class="form-group">
+            <label for="budget">Enter your budget amount ($):</label>
+            <input type="number" id="budget" name="budget" value="150" min="0" class="form-control" required>
+            <div class="invalid-feedback">
+                Please provide a valid budget amount.
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Select Budget</button>
+    </form>
+    
+    <script>
+        // Bootstrap's form validation script
+        (function() {
+            'use strict';
+            window.addEventListener('load', function() {
+                var forms = document.getElementsByClassName('needs-validation');
+                Array.prototype.filter.call(forms, function(form) {
+                    form.addEventListener('submit', function(event) {
+                        if (form.checkValidity() === false) {
+                            event.preventDefault();
+                            event.stopPropagation();
+                        }
+                        form.classList.add('was-validated');
+                    }, false);
+                });
+            }, false);
+        })();
+    </script>
+</div>
+
+
+
+{% endblock %}

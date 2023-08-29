@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Button to redirect to meal_plan.html -->
+    <a href="{{ url_for('views.meal_plan') }}" class="btn btn-primary mb-4">Back to Meal Plan</a>
+
+    <h1 class="display-4">{{ recipe.name }}</h1>
+
+    <h2 class="mt-4">Ingredients</h2>
+    {% if recipe.recipe_items %}
+    <ul class="list-group">
+        {% for item in recipe.recipe_items %}
+        <li class="list-group-item">{{ item.quantity }} {{ item.unit }} of {{ item.item.name }}</li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-muted">No ingredients available.</p>
+    {% endif %}
+
+    <h2 class="mt-4">Instructions</h2>
+    <p class="{{ 'text-muted' if not recipe.instructions }}">{{ recipe.instructions or 'No instructions available.' }}</p>
+
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <h3>Rating</h3>
+            <p>{{ recipe.rating or 'No rating available.' }}</p>
+        </div>
+        <div class="col-md-4">
+            <h3>Cost</h3>
+            <p>${{ recipe.cost or 'N/A' }}</p>
+        </div>
+        <div class="col-md-4">
+            <h3>Time</h3>
+            <p>{{ recipe.time or 'N/A' }} minutes</p>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <h3>Serves</h3>
+            <p>{{ recipe.serves or 'N/A' }} people</p>
+        </div>
+        <div class="col-md-6">
+            <h3>Tags</h3>
+            <p class="{{ 'text-muted' if not recipe.tags }}">{{ recipe.tags or 'No tags available.' }}</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

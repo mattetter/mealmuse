@@ -1,0 +1,27 @@
+{% extends "meal_plan.html" %}
+
+{% block meal_plan_selection %}
+
+<div class="container mt-5">
+    <h2 class="mb-4">Select Your Cooking Proficiency</h2>
+    
+    <form action="{{ url_for('views.proficiency') }}" method="post">
+        <div class="form-group">
+            <label for="cookingProficiency">Choose your level:</label>
+            <select id="cookingProficiency" name="proficiency" class="form-control">
+                <option value="" disabled selected>Select an option</option>
+                <option value="Burn Water">I could burn water</option>
+                <option value="Beginner">Beginner: I can make basic dishes with clear instructions</option>
+                <option value="Intermediate">Intermediate: I can handle most recipes and occasionally experiment</option>
+                <option value="Advanced">Advanced: I'm pretty comfortable in the kitchen and like to try new things</option>
+                <option value="Expert">Expert: Friends and family often come to me for cooking advice</option>
+                <option value="Professional Chef">I am a professional chef</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Submit Proficiency</button>
+    </form>
+</div>
+
+
+
+{% endblock %}

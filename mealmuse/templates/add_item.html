@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>Add Item</h1>
+  <form method="POST">
+    {{ form.hidden_tag() }}
+    <p>
+      {{ form.name.label }}<br>
+      {{ form.name(size=32) }}
+    </p>
+    <p>
+      {{ form.quantity.label }}<br>
+      {{ form.quantity() }}
+    </p>
+    <p>
+      {{ form.unit.label }}<br>
+      {{ form.unit(size=32) }}
+    </p>
+    <p>
+      {{ form.expiration_date.label }}<br>
+      {{ form.expiration_date(size=32) }}
+    </p>
+    <p>{{ form.submit() }}</p>
+  </form>
+{% endblock %}

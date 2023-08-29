@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% with today_date=datetime.datetime.now() %}
+<h2 class="text-center mt-3">Meal Plan</h2>
+<p class="text-center">A man, a plan, a canal. Panama.</p>
+
+
+<!-- Link to the Allergies and Dietary Restrictions page -->
+<div class="mt-2">
+    <a href="{{ url_for('views.profile') }}" class="btn btn-link">Change allergies or dietary restrictions</a>
+</div>
+
+
+<!-- Collapsible container for Meal Plan Settings -->
+<button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#mealPlanSettings" aria-expanded="false" aria-controls="mealPlanSettings">Create a New Meal Plan</button>
+
+<div class="collapse mb-4 container" id="mealPlanSettings">
+
+    <!--day selection-->
+    <div class="container">
+        <label for="days">Get started by selecting which days you want to plan for.</label>
+
+        <div id="daysForm" class="mb-5 d-flex justify-content-center align-items-center">
+            <form id="selectDaysForm" class="form-inline" method="post" action="{{ url_for('views.day_selections') }}">
+                <div class="row justify-content-center">
+                    {% for i in range(7) %}
+                        {% with day=today_date + datetime.timedelta(days=i) %}
+                            <div class="col-md-1 my-2 mx-3">
+                                <div class="form-check text-center">
+                                    <input class="form-check-input" type="checkbox" name="day" value="{{ day.isoformat() }}" id="day{{ i }}">
+                                    <label class="form-check-label d-block mt-1" for="day{{ i }}">
+                                        {{ day.strftime('%A, %B %d') }}
+                                    </label>
+                                </div>
+                            </div>
+                        {% endwith %}
+                    {% endfor %}
+                </div>
+
+                    <!-- Preferred Cuisine/Requests -->
+                    <div class="form-group mt-3">
+                        <label for="preferred_cuisine">Preferred Cuisine/Other Requests:</label>
+                        <input type="text" id="preferred_cuisine" name="preferred_cuisine" class="form-control" placeholder="E.g. Italian, Low Carb, Vegan from Venezuela">
+                    </div>
+
+                <div class="container-fluid mt-3">
+                    <div class="row">
+                        <div class="col text-right">
+                            <button type="submit" class="btn btn-primary">Create a Meal Plan</button>
+                        </div>
+                    </div>
+                </div>
+                
+            </form>
+        </div>
+        
+    </div>
+    {% endwith %}
+
+</div>
+<br>
+{% block meal_plan_selection %}{% endblock %}
+<br>
+<!-- Meal Plan Display -->
+<div class="container">
+    <h2>Meal Plan</h2>
+    {% if meal_plan %}
+        <p>Description: {{ meal_plan["description"] }}</p>  <!-- Display the description here -->
+        {% for day in meal_plan["days"] %}
+            <h3>{{ day["day_name"] }}</h3>
+            {% for meal in day["meals"] %}
+                <div class="card">
+                    <div class="card-header">
+                        {{ meal["meal_name"] }}
+                    </div>
+                    <ul class="list-group list-group-flush">
+                        {% for recipe in meal["recipes"] %}
+                        <li class="list-group-item">
+                            <a href="{{ url_for('views.recipe_in_meal_plan_page', recipe_id=recipe["recipe_id"]) }}">
+                                {{ recipe["recipe_name"] }}
+                            </a>
+                            <!-- Or if you prefer a button -->
+                            <!-- <button onclick="location.href='{{ url_for('views.recipe_in_meal_plan_page', recipe_id=recipe["recipe_id"]) }}'">{{ recipe["recipe_name"] }}</button> -->
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <br>
+            {% endfor %}
+        {% endfor %}
+    {% else %}
+        <p>No meal plan generated yet.</p>
+    {% endif %}
+</div>
+
+
+{% endblock %}

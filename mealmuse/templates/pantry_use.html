@@ -1,0 +1,27 @@
+{% extends "meal_plan.html" %}
+
+{% block meal_plan_selection %}
+
+<div class="container mt-5">
+    <h2 class="mb-4">Choose How Much to Rely on Pantry Items</h2>
+    
+    <form action="{{ url_for('views.pantry_use') }}" method="post">
+        <div class="form-group">
+            <label for="pantryUse">Select your preference:</label>
+            <select id="pantryUse" name="pantry_use" class="form-control">
+                <option value="" disabled selected>Select an option</option>
+                <option value="Do not use pantry items at all">I hate every edible thing in my house</option>
+                <option value="Use the essentials like spices and oil">Use the essentials like spices and oil</option>
+                <option value="Use fresh items like fruits and veggies even if not in pantry">Fresh veggies at least</option>
+                <option value="Use best judgment regarding usage of recipe ingredients in pantry vs items not in pantry">Whatever works, I'm going grocery shopping anyway</option>
+                <option value="minimize use of recipe ingredients not in pantry">Almost entirely rely on them</option>
+                <option value="Only use items already in pantry">Don't make me leave the house</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Submit Preference</button>
+    </form>
+</div>
+
+
+
+{% endblock %}

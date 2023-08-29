@@ -1,0 +1,35 @@
+{% extends "meal_plan.html" %}
+
+{% block meal_plan_selection %}
+
+
+<div class="container mt-5">
+    <h2 class="mb-4">How many people will this feed?</h2>
+    <p class="mb-4">You can make further selections by day and by meal later.</p>
+    
+    <form action="{{ url_for('views.family_size') }}" method="post">
+        <div class="form-group">
+            <label for="familySize">Select the number of family members:</label>
+            <select id="familySize" name="family_size" class="form-control">
+                <option value="" disabled selected>Select a family size</option>
+                <option value="1">1 person</option>
+                <option value="2">2 people</option>
+                <option value="3">3 people</option>
+                <option value="4">4 people</option>
+                <option value="5">5 people</option>
+                <option value="6">6 people</option>
+                <option value="7">7 people</option>
+                <option value="8">8 people</option>
+                <option value="9">9 people</option>
+                <option value="10">An army</option>
+                <!-- ... add more options as needed -->
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Select Size</button>
+    </form>
+</div>
+
+
+
+
+{% endblock %}

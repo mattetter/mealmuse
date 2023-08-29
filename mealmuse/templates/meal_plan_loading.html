@@ -1,0 +1,32 @@
+{% extends "meal_plan.html" %}
+
+{% block meal_plan_selection %}
+<h1>Generating a new meal plan</h1>
+<p>This may take a few minutes, please come back later</p>
+
+<!-- Bootstrap Spinner -->
+<div id="spinner" class="d-flex justify-content-center" style="z-index: 1000; display: flex !important">
+    <div class="spinner-border text-success" role="status">
+        <span class="sr-only">Loading...</span>
+    </div>
+</div>
+  
+
+<script>
+$(document).ready(function() {
+    console.log("jQuery version: " + $.fn.jquery);
+    // Start generating the meal plan as soon as the loading page is displayed
+    $.post("/generate_meal_plan", function(data) {
+        if (data.status === "success") {
+            // Once generation is complete, redirect to the meal plan display page or next step
+            window.location.href = "{{ url_for('views.meal_plan') }}";
+        } else {
+            // If there's an error during generation, display it to the user
+            alert(data.message);
+        }
+    });
+});
+</script>
+
+
+{% endblock %}

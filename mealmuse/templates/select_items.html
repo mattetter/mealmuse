@@ -1,0 +1,61 @@
+{% extends "meal_plan.html" %}
+
+{% block meal_plan_selection %}
+{% if current_day %}
+    <h3>Select options for:</h3>
+    <h3>{{ current_day }}</h3>
+    
+    <form action="{{ url_for('views.select_items') }}" method="post">
+        <!-- Meal Options -->
+        {% for meal in ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"] %}
+        <div class="form-group">
+            <label><input type="checkbox" class="mr-1 meal-option" name="meals" value="{{ meal }}" onchange="toggleControls('{{ meal }}')"> {{ meal }}</label>
+            <div class="meal-controls" id="{{ meal }}-controls" style="display: none;">
+                <!-- Time available to cook -->
+                <label for="{{ meal }}-time">Time available:</label>
+                <select id="{{ meal }}-time" name="{{ meal }}-time" class="form-control">
+                    <option value="0">no time</option>
+                    <option value="15">15 mins</option>
+                    <option value="30">30 mins</option>
+                    <option value="60">1 hour</option>
+                    <option value="120">2 hours</option>
+                    <option value="240">4 hours</option>
+                    <option value="800">unlimited</option>
+                </select>
+
+                <!-- Cooking for -->
+                <label for="{{ meal }}-people">Cooking for:</label>
+                <select id="{{ meal }}-people" name="{{ meal }}-people" class="form-control">
+                    {% for i in range(1, 10) %}
+                        <option value="{{ i }}">{{ i }} person{% if i > 1 %}s{% endif %}</option>
+                    {% endfor %}
+                </select>
+
+                <!-- Cuisine/Requests -->
+                <label for="{{ meal }}-cuisine">Cuisine/Requests:</label>
+                <input type="text" id="{{ meal }}-cuisine" name="{{ meal }}-cuisine" class="form-control" placeholder="E.g. Italian, Low Carb">
+                
+                <!-- Meal type -->
+                <label for="{{ meal }}-type">Type:</label>
+                <select id="{{ meal }}-type" name="{{ meal }}-type" class="form-control">
+                    <option value="home-cooked">Home Cooked</option>
+                    <option value="leftovers">Leftovers</option>
+                    <option value="takeout">Takeout</option>
+                </select>
+            </div>
+        </div>
+        {% endfor %}
+        
+        <button type="submit">Next</button>
+    </form>
+    
+    <script>
+        function toggleControls(meal) {
+            const controlDiv = document.getElementById(meal + "-controls");
+            controlDiv.style.display = controlDiv.style.display === 'none' ? 'block' : 'none';
+        }
+    </script>
+{% else %}
+    <h2>No days were selected.</h2>
+{% endif %}
+{% endblock %}
