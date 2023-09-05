@@ -44,15 +44,13 @@ class TestUtilsFunctions(unittest.TestCase):
         user_id = user.id
         # Check if the meal plan contains the correct number of days
         self.assertEqual(len(meal_plan.days), 2)
-
         # run get meal plan in celery
-        meal_plan_id = get_meal_plan(meal_plan_id, user_id)
-
+        get_meal_plan(meal_plan_id, user_id)
         # test to check if checking sqlalchemy object in different thread messes up the write
         # every 5 seconds for 25 seconds or until successful, load the meal_plan_obj, check if all the recipes in it have instructions
        
         recipe_name_list = []
-        for attempt in range(5):
+        for attempt in range(18):
             
             meal_plan_obj = db.session.get(MealPlan, meal_plan_id)
             for recipe in meal_plan_obj.recipes:

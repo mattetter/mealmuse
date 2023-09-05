@@ -8,7 +8,7 @@ from flask import flash, redirect, render_template, request, session, url_for, c
 from flask_login import login_user, login_required, logout_user, current_user
 from .forms import PantryItemForm, RegistrationForm, LoginForm  # import the forms
 from .models import User, Pantry, Item, ShoppingList, MealPlan, Recipe, PantryItem, ShoppingListItem, Meal, Day, Diet, Allergy, UserProfile  # import the models
-from .utils import get_meal_plan, get_meal_plan_details, get_recipe_details_by_ids, extract_recipe_ids, get_user_profile, create_blank_meal_plan, check_for_incomplete_meal_plan, save_day # import the utility functions
+from .utils import get_meal_plan, get_meal_plan_details, get_recipe_details_by_ids, extract_recipe_ids, get_user_profile, create_blank_meal_plan, check_for_incomplete_meal_plan, save_day, add_item_to_list, add_missing_or_all_items_to_shopping_list # import the utility functions
 from werkzeug.security import generate_password_hash, check_password_hash
 from .exceptions import InvalidOutputFormat
 
@@ -117,37 +117,12 @@ def add_item():
     if request.method == 'POST':
         name = request.form.get('name')
         quantity = request.form.get('quantity') or 1
+        unit = request.form.get('unit')  # Get unit if available
         list_type = request.form.get('list_type')
-        
-        # Get or create the general item in the Item table
-        item = Item.query.filter_by(name=name).first()
-        if not item:
-            item = Item(name=name)
-            db.session.add(item)
-        
-        if list_type == 'pantry':
-            pantry = Pantry.query.filter_by(user_id=current_user.id).first()
-            pantry_item = PantryItem.query.filter_by(item_id=item.id, pantry_id=pantry.id).first()
-            if pantry_item:
-                pantry_item.quantity += float(quantity)
-            else:
-                pantry_item = PantryItem(item_id=item.id, pantry_id=pantry.id, quantity=quantity)
-                db.session.add(pantry_item)
-        elif list_type == 'shopping_list':
-            shopping_list = ShoppingList.query.filter_by(user_id=current_user.id).first()
-            shopping_list_item = ShoppingListItem.query.filter_by(item_id=item.id, shopping_list_id=shopping_list.id).first()
-            if shopping_list_item:
-                shopping_list_item.quantity += float(quantity)
-            else:
-                shopping_list_item = ShoppingListItem(item_id=item.id, shopping_list_id=shopping_list.id, quantity=quantity)
-                db.session.add(shopping_list_item)
+        add_item_to_list(current_user, name, quantity, list_type, unit)
 
-        db.session.commit()
-        
-        return redirect(url_for('views.pantry_and_list'))
-
-    return render_template('views.pantry_and_list.html')
-
+    referrer = request.referrer
+    return redirect(referrer)
 
 
 # Edit an existing item in the pantry or shopping list
@@ -168,6 +143,18 @@ def remove_item(list_type, item_id):
         flash("Item not found!")
     
     return redirect(url_for('views.pantry_and_list'))
+
+# add the ingredients for a recipe to the shopping list
+@views.route('/add_group_to_shopping_list', methods=['POST'])
+def add_group_to_shopping_list():
+    recipe_id = request.form.get('recipe_id')
+    action = request.form.get('action', 'add_missing')  # Default to 'add_missing' if not specified
+    recipe = Recipe.query.get(recipe_id)  # Replace with your logic to get the recipe
+
+    add_missing_or_all_items_to_shopping_list(current_user, recipe, action)
+
+    referrer = request.referrer
+    return redirect(referrer)
 
 
 # the homescreen
@@ -224,7 +211,7 @@ def index():
         return render_template('index.html', meal_plan=meal_plan_to_display, recipes=recipes_to_display, datetime=datetime)
 
 
-# Meal Plan: main route
+# Meal Plan: main page for creating and modifying meal plans
 @views.route("/meal_plan", methods=["GET", "POST"])
 @login_required
 def meal_plan(meal_plan=None):
@@ -430,7 +417,6 @@ def meal_plan_loading():
 # doing the actual work of generating the meal plan here in order to render a loading screen
 @views.route('/generate_meal_plan', methods=['POST'])
 def generate_meal_plan():
-    
     #get the user from session
     user = User.query.get(current_user.id)
     # get the meal_plan from the session

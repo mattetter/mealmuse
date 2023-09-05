@@ -28,21 +28,6 @@ def create_app_instance():
     return app
 
 
-# Meal Plan generation; wrap the recipe api call in a function to be used in parallel
-@celery.task
-def fetch_recipe_details_with_context(recipe_id):
-    app = create_app_instance()
-    with app.app_context():
-        try:
-            result = fetch_recipe_details(recipe_id)
-        except Exception as e:
-            db.session.rollback()
-            print(f"Error occurred: {e}")
-            raise
-        return result
-
-
-
 @celery.task
 def generate_meal_plan(meal_plan_id, user_id):
     app = create_app_instance()
@@ -51,21 +36,59 @@ def generate_meal_plan(meal_plan_id, user_id):
 
             meal_plan = MealPlan.query.filter_by(id=meal_plan_id).first()
             user = User.query.filter_by(id=user_id).first()
+
             # get meal plan from openai
-            # meal_plan_output = fetch_meal_plan_from_api(meal_plan, user)\
+            meal_plan_output = fetch_meal_plan_from_api(meal_plan, user)
 
             # fake api call for testing
-            meal_plan_output = meal_plan_output_gpt_4_v2
+            # meal_plan_output = meal_plan_output_gpt_4_v2
             
             # save generated meal plan with user selections to database
-            save_meal_plan_output(meal_plan_output, meal_plan, user)
+            meal_plan_id = save_meal_plan_output(meal_plan_output, meal_plan, user)
+            # fetch recipe details in parallel
+            
+            fetch_recipe_details_with_context(meal_plan_id)
 
-    
         except Exception as e:
             db.session.rollback()
             print(f"Error occurred: {e}")
+            db.session.remove()
             raise
         return meal_plan_id
+    
+
+# Meal Plan generation; wrap the recipe api call in a function to be used in parallel
+def fetch_recipe_details_with_context(meal_plan_id):
+    app = create_app_instance()
+    with app.app_context():
+        try:
+            meal_plan = MealPlan.query.filter_by(id=meal_plan_id).first()
+            result = [fetch_recipe_details.delay(recipe.id) for recipe in meal_plan.recipes]
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error occurred: {e}")
+            db.session.remove()
+            raise
+        return result
+
+
+# # Meal Plan generation: generate a single recipe
+# @celery.task
+# def generate_recipe(recipe_id, meal_id = None):
+#     app = create_app_instance()
+#     with app.app_context():
+#         try:
+#             recipe = Recipe.query.filter_by(id=recipe_id).first()
+#             recipe_output = fetch_recipe_details(recipe_id)
+#             # fake api call for testing
+#             # recipe_output = get_recipe(recipe.name)
+#             recipe_id = process_recipe_output(recipe_output, recipe_id)
+#         except Exception as e:
+#             db.session.rollback()
+#             print(f"Error occurred: {e}")
+#             db.session.remove()
+#             raise
+#         return recipe_id
 
 
 # Meal Plan generation; process the user input to create a user prompt in the expected format
@@ -211,6 +234,7 @@ def save_meal_plan_output(meal_plan_json, meal_plan, user):
                 cost=recipe_data['cost_in_dollars'],
                 time=recipe_data['time_required'],
                 serves=recipe_data['serves'],
+                cuisine=meal_obj.cuisine,
                 num_ingredients=recipe_data['number_of_ingredients']
             )
             
@@ -239,11 +263,14 @@ def save_meal_plan_output(meal_plan_json, meal_plan, user):
                 db.session.add(recipe_item)
             db.session.commit()
 
+    return meal_plan.id
+
 
 # Meal Plan generation; the api call to get a recipe
+@celery.task
 def fetch_recipe_details(recipe_id):
     recipe = db.session.query(Recipe).filter_by(id=recipe_id).first()
-    db.session.refresh(recipe)
+    
     retries = 2
     recipe_user_prompt = create_recipe_user_prompt(recipe)
     recipe_name = recipe.name
@@ -272,22 +299,13 @@ def fetch_recipe_details(recipe_id):
 def create_recipe_user_prompt(recipe):
     # Placeholder for the result in json format
     result = {}
-    # get details of meal
-    meal = recipe.meals[0]
-    meal_name = meal.name
-    meal_type = meal.type
-    cuisine = meal.cuisine
-    meal_prep_time = meal.prep_time
-    serves = meal.num_people
-
-    # number of recipes in meal
-    num_recipes = len(meal.recipes)
 
     # get the recipe specific details
     name = recipe.name
     cost = recipe.cost
     time = recipe.time
     serves = recipe.serves
+    cuisine = recipe.cuisine
     num_ingredients = recipe.num_ingredients
 
     # get the recipe's ingredients
@@ -304,9 +322,7 @@ def create_recipe_user_prompt(recipe):
         "serves": serves,
         "total number of ingredients": num_ingredients,
         "ingredients from pantry to include": ingredients,
-        "meal": meal_name,
-        "cuisine or user requests": cuisine,
-        "number of recipes for this meal including this one": num_recipes
+        "cuisine or user requests": cuisine
     }}
 
     return json.dumps(result)
@@ -397,3 +413,21 @@ def load_json_with_fractions(s):
     """Loads a JSON string, even if it contains fractions."""
     preprocessed_string = preprocess_json_string(s)
     return json.loads(preprocessed_string)
+
+
+# from celery.signals import worker_process_init
+
+# @worker_process_init.connect
+# def on_worker_init(*args, **kwargs):
+#     warmup.apply_async()
+
+
+
+# @celery.task
+# def warmup():
+#     # Perform some simple database queries
+#     some_query = db.session.query(Recipe).limit(1).all()
+#     another_query = db.session.query().limit(1).all()
+
+#     # Close the session
+#     db.session.remove()

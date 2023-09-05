@@ -1,4 +1,5 @@
-/* body {
-  background-color: rgb(134, 151, 176);
-  margin: 0px;
-} */
+.btn-link.btn-sm {
+  font-size: 16px;
+  line-height: 0;
+  padding: 5;
+}

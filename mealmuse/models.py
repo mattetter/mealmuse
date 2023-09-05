@@ -52,13 +52,13 @@ class Recipe(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(180), nullable=False)
     instructions = db.Column(db.String(1500))
+    cuisine = db.Column(db.String(300))
     rating = db.Column(db.Integer)
     cost = db.Column(db.Integer)
     time = db.Column(db.Integer)
     serves = db.Column(db.Integer)
     tags = db.Column(db.String(200))
     num_ingredients = db.Column(db.Integer)
-
 
 class MealPlan(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -70,7 +70,6 @@ class MealPlan(db.Model):
     leftovers = db.Column(db.String, default="I'm okay with leftovers, but prefer variety")
     cuisine_requests = db.Column(db.String(200), default="Any")
     user_id = db.Column(db.Integer, ForeignKey('user.id'), nullable=False)
-
 
 class Day(db.Model):
     id = db.Column(db.Integer, primary_key=True)

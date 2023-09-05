@@ -23,22 +23,21 @@ ureg.define('dash = 0.125 teaspoon = ds = dashes')
 ureg.define('pinch = 0.0625 teaspoon = pn = pinches')
 ureg.define('smidgen = 0.03125 teaspoon = sm')
 
+# Meal Plan Generation; Generates a meal plan based on the user's preferences
 def get_meal_plan(meal_plan_id, user_id):
 
-    meal_plan_id = generate_meal_plan.delay(meal_plan_id, user_id).get()
-    db.session.close()
-    meal_plan = db.session.query(MealPlan).filter_by(id=meal_plan_id).first()
-    db.session.close
-    # fetch recipe details for all recipes concurrently using celery
-    [fetch_recipe_details_with_context.delay(recipe.id) for recipe in meal_plan.recipes]
-   
-    print('recipes being generated.')
-    # wait for all recipes to be generated
-    return meal_plan_id
+    print("getting meal plan")
+    
+    generate_meal_plan.delay(meal_plan_id, user_id)
+
+
+# Meal Plan Generation; Generates a single recipe based on the user's preferences
+def get_recipe(recipe_id, user_id):
+    fetch_recipe_details_with_context.delay(recipe_id, user_id)
 
 
 # Shopping list; takes the ingredients from a recipe and adds them to the user's shopping list
-def add_recipe_to_shopping_list(recipe_id, user):
+def add_recipe_to_shopping_list(user, recipe_id = None):
     
     # Retrieve the recipe based on the given recipe ID
     recipe = db.session.get(Recipe, recipe_id)
@@ -149,6 +148,86 @@ def remove_recipe_from_shopping_list(recipe_id, user):
     db.session.commit()
 
     return shopping_list
+
+
+def add_item_to_list(user, name, quantity, list_type, unit = None):
+    # Get or create the general item in the Item table
+    item = Item.query.filter_by(name=name).first()
+    if not item:
+        item = Item(name=name)
+        db.session.add(item)
+
+    # if quantity is a string convert it to a float
+    if isinstance(quantity, str):
+        quantity = float(quantity)
+
+    if list_type == 'pantry':
+        pantry = Pantry.query.filter_by(user_id=user.id).first()
+        existing_pantry_item = PantryItem.query.filter_by(item_id=item.id, pantry_id=pantry.id).first()
+        if existing_pantry_item:
+            #update the quantity
+            existing_pantry_item = update_item_quantity(existing_pantry_item, quantity, unit)
+         # If item is not present in the shopping list, add it
+        else:
+            pantry_item = PantryItem(item_id=item.id, pantry_id=pantry.id, quantity=quantity, unit=unit)
+            db.session.add(pantry_item)
+    
+    elif list_type == 'shopping_list':
+        shopping_list = ShoppingList.query.filter_by(user_id=user.id).first()
+        existing_list_item = ShoppingListItem.query.filter_by(item_id=item.id, shopping_list_id=shopping_list.id).first()
+        if existing_list_item:
+            # update the quantity
+            existing_list_item = update_item_quantity(existing_list_item, quantity, unit)
+         # If item is not present in the shopping list, add it
+        else:
+            shopping_list_item = ShoppingListItem(item_id=item.id, shopping_list_id=shopping_list.id, quantity=quantity, unit=unit)
+            db.session.add(shopping_list_item)
+
+    db.session.commit()
+
+
+# Shopping list/ Pantry; add or remove quantity from existing item
+def add_missing_or_all_items_to_shopping_list(user, recipe, action="add_missing"):
+    pantry = Pantry.query.filter_by(user_id=user.id).first()
+    pantry_items = {item.item.name: item for item in pantry.pantry_items} if pantry else {}
+    
+    for ingredient in recipe.recipe_items:
+        # If the action is "add_missing", only add the item if it's not in the pantry
+        if action == "add_missing" and ingredient.item.name in pantry_items:
+            continue
+        # If the action is "add_all", or the item was not in the pantry, add it to the shopping list
+        unit = ingredient.unit
+        ingredient_name = ingredient.item.name
+        quantity = ingredient.quantity
+        list_type = "shopping_list"
+
+        add_item_to_list(user, ingredient_name, quantity, list_type, unit)
+
+
+# Shopping list/ Pantry; add or remove quantity from existing item
+def update_item_quantity(item, quantity, unit):
+    # Create pint quantities for the existing item and the new quantity to be added
+    try:
+        additional_quantity = quantity * ureg(unit)
+    except pint.errors.UndefinedUnitError:
+        # If the unit is undefined, treat the units as matching
+        additional_quantity = quantity 
+
+    # If the units match, just add the quantity
+    if item.unit == unit:
+        item.quantity += round(quantity, 2)  # round to 2 decimal places
+    else:
+        # Try to convert the new quantity to the unit of the existing item
+        try:
+            converted_additional_quantity = additional_quantity.to(item.unit)
+            # Add the rounded converted magnitude to the existing quantity
+            item.quantity += round(converted_additional_quantity.magnitude, 2) 
+        # If there's a conversion error, leave the units as they are
+        except pint.errors.UndefinedUnitError:
+            item.quantity += round(additional_quantity, 2)
+            
+    return item
+
 
 # Shopping list: add one ingredient
 def add_ingredient_to_user_shopping_list(user, ingredient):
@@ -382,7 +461,8 @@ def save_day(meal_plan_id, current_day_datetime, meals_data):
 
 # Data retrieval and display; this function 
 def get_meal_plan_details(user, meal_plan_id=None):
-
+    print("getting meal plan details")
+    print(user.id)
     if meal_plan_id:
         meal_plan = db.session.query(MealPlan).filter_by(id=meal_plan_id).first()
     else:
@@ -508,7 +588,7 @@ def check_for_incomplete_meal_plan(session):
             print("deleted meal plan")
             db.session.commit()
             return
-
+        
 
 def fraction_to_decimal(match):
     """Converts a fraction to its decimal representation."""
@@ -523,42 +603,3 @@ def load_json_with_fractions(s):
     """Loads a JSON string, even if it contains fractions."""
     preprocessed_string = preprocess_json_string(s)
     return json.loads(preprocessed_string)
-
-def delete_everything_in_database():
-
-    db.session.query(RecipeItem).delete()
-    db.session.query(ShoppingListItem).delete()
-    db.session.query(PantryItem).delete()
-    db.session.commit()
-
-    db.session.query(Pantry).delete()
-    db.session.query(Item).delete()
-    db.session.query(ShoppingList).delete()
-    db.session.commit()
-    
-    #delete all associations between recipes and users
-    db.session.query(users_recipes).delete()
-
-    # delete associations between recipes and meals
-    db.session.query(recipes_meals).delete()
-
-    # delete associations between recipes and meal_plans
-    db.session.query(recipes_mealplans).delete()
-    db.session.commit()
-
-    db.session.query(Recipe).delete()
-    db.session.commit()
-    db.session.query(Meal).delete()
-    db.session.commit()
-    db.session.query(Day).delete()
-    db.session.commit()
-
-    db.session.query(MealPlan).delete()
-    db.session.commit()
-    db.session.query(UserProfile).delete()
-    db.session.query(Equipment).delete()
-    db.session.query(Allergy).delete()
-    db.session.query(Diet).delete()
-    db.session.query(User).delete()
-    db.session.commit()
-    print("deleted everything in database")
