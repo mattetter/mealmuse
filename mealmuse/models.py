@@ -50,7 +50,7 @@ class Equipment(db.Model):
 
 class Recipe(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(180), nullable=False)
+    name = db.Column(db.String(300), nullable=False)
     instructions = db.Column(db.String(1500))
     cuisine = db.Column(db.String(300))
     rating = db.Column(db.Integer)

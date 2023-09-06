@@ -27,71 +27,13 @@ ureg.define('smidgen = 0.03125 teaspoon = sm')
 def get_meal_plan(meal_plan_id, user_id):
 
     print("getting meal plan")
-    
+
     generate_meal_plan.delay(meal_plan_id, user_id)
 
 
 # Meal Plan Generation; Generates a single recipe based on the user's preferences
 def get_recipe(recipe_id, user_id):
     fetch_recipe_details_with_context.delay(recipe_id, user_id)
-
-
-# Shopping list; takes the ingredients from a recipe and adds them to the user's shopping list
-def add_recipe_to_shopping_list(user, recipe_id = None):
-    
-    # Retrieve the recipe based on the given recipe ID
-    recipe = db.session.get(Recipe, recipe_id)
-    if not recipe:
-        raise ValueError("Invalid recipe ID")
-
-    # Retrieve the ingredients associated with the recipe
-    recipe_items = db.session.query(RecipeItem).filter_by(recipe_id=recipe_id).all()
-
-    # Check if the user has a shopping list, if not create one
-    shopping_list = user.shopping_list
-    if not shopping_list:
-        shopping_list = ShoppingList(user_id=user.id)
-        db.session.add(shopping_list)
-
-    # Process each ingredient from the recipe
-    for recipe_item in recipe_items:
-        
-        # Check if the item (as a ShoppingListItem) is already present in the shopping list
-        item_in_list = db.session.query(ShoppingListItem).join(ShoppingList).join(Item).filter(
-            ShoppingList.id == shopping_list.id, 
-            Item.name == recipe_item.item.name
-        ).first()
-
-        # If the item is present in the shopping list
-        if item_in_list:
-            # Create pint quantities for the existing and new items
-            try:
-                new_quantity = recipe_item.quantity * ureg(recipe_item.unit)
-            except pint.errors.UndefinedUnitError:
-                # If there's a conversion error, use the quantity from the item in the shopping list
-                new_quantity = recipe_item.quantity
-
-            # If units match, just add the quantity
-            if item_in_list.unit == recipe_item.unit:
-                item_in_list.quantity += round(recipe_item.quantity, 2)  # rounding to 2 decimal places
-            # If units don't match, try to convert the new quantity to the unit of the existing item
-            else:
-                try:
-                    converted_new_quantity = new_quantity.to(item_in_list.unit)
-                    item_in_list.quantity += round(converted_new_quantity.magnitude, 2)
-                except pint.errors.UndefinedUnitError:
-                    # If there's a conversion error, use the unit from the item in the shopping list
-                    item_in_list.quantity += round(new_quantity.magnitude, 2)
-
-        # If item is not present in the shopping list, add it
-        else:
-            shopping_list_item = ShoppingListItem(item_id=recipe_item.item_id, shopping_list_id=shopping_list.id, quantity=recipe_item.quantity, unit=recipe_item.unit, recipe_id=recipe_id)
-            db.session.add(shopping_list_item)
-
-    # Commit the changes to the database
-    db.session.commit()
-
-    return shopping_list
 
 
 # Shopping list: removes all ingredients from a recipe from the user's shopping list
@@ -206,12 +148,36 @@ def add_missing_or_all_items_to_shopping_list(user, recipe, action="add_missing"
 
 # Shopping list/ Pantry; add or remove quantity from existing item
 def update_item_quantity(item, quantity, unit):
+
+    #if item has no quantity, set it to 1
+    if not item.quantity:
+        item.quantity = 1
+    # if no quantity is specified, increment by 1
+    if not quantity:
+        item.quantity += 1
+        return item
+    # if no units are specified, use the existing item's unit
+    if not unit:
+        unit = item.unit
+    # if the item also has no units, just add the quantity
+    if not item.unit:
+        item.unit = unit
+        item.quantity += round(quantity, 2)
+        if item.quantity <= 0:
+            db.session.delete(item)
+            db.session.commit()
+        return item or None
     # Create pint quantities for the existing item and the new quantity to be added
     try:
         additional_quantity = quantity * ureg(unit)
     except pint.errors.UndefinedUnitError:
         # If the unit is undefined, treat the units as matching
-        additional_quantity = quantity 
+        unit = item.unit 
+    except pint.errors.DimensionalityError:
+
+        #TODO FIX THIS GARBAGE. Shouldn't happen much with revised prompts now though.
+        # if we are trying to add cups to grams, just return the item
+        return item
 
     # If the units match, just add the quantity
     if item.unit == unit:
@@ -222,11 +188,38 @@ def update_item_quantity(item, quantity, unit):
             converted_additional_quantity = additional_quantity.to(item.unit)
             # Add the rounded converted magnitude to the existing quantity
             item.quantity += round(converted_additional_quantity.magnitude, 2) 
+
         # If there's a conversion error, leave the units as they are
         except pint.errors.UndefinedUnitError:
-            item.quantity += round(additional_quantity, 2)
-            
-    return item
+            # if we are trying to add basil leaves to grams of basil, just return the item unchanged
+            print("Undefined unit error")
+            return item
+        # for dimensional errors don't change the quantity
+        except pint.errors.DimensionalityError:
+            # if we are trying to add cups to grams, just do nothing and return the item
+            print(f"Dimensionality error, item: {item.item.name}")
+
+            return item
+
+    if item.quantity <= 0:
+        db.session.delete(item) 
+    return item or None
+
+
+# Shopping list: removes all ingredients from a recipe from the user's pantry
+def remove_recipe_items_from_pantry(user, recipe):
+    pantry = Pantry.query.filter_by(user_id=user.id).first()
+    pantry_items = {item.item.name: item for item in pantry.pantry_items} if pantry else {}
+    
+    for ingredient in recipe.recipe_items:
+        # If the item is in the pantry, remove the quantity used in recipe
+        if ingredient.item.name in pantry_items:
+            pantry_item = pantry_items[ingredient.item.name]
+            quantity = ingredient.quantity
+            unit = ingredient.unit
+            pantry_item = update_item_quantity(pantry_item, -quantity, unit)
+
+    db.session.commit()
 
 
 # Shopping list: add one ingredient
@@ -461,8 +454,6 @@ def save_day(meal_plan_id, current_day_datetime, meals_data):
 
 # Data retrieval and display; this function 
 def get_meal_plan_details(user, meal_plan_id=None):
-    print("getting meal plan details")
-    print(user.id)
     if meal_plan_id:
         meal_plan = db.session.query(MealPlan).filter_by(id=meal_plan_id).first()
     else:

@@ -77,11 +77,11 @@
                     <ul class="list-group list-group-flush">
                         {% for recipe in meal["recipes"] %}
                         <li class="list-group-item">
-                            <a href="{{ url_for('views.recipe_in_meal_plan_page', recipe_id=recipe["recipe_id"]) }}">
+                            <a href="{{ url_for('views.recipe_page', recipe_id=recipe["recipe_id"]) }}">
                                 {{ recipe["recipe_name"] }}
                             </a>
                             <!-- Or if you prefer a button -->
-                            <!-- <button onclick="location.href='{{ url_for('views.recipe_in_meal_plan_page', recipe_id=recipe["recipe_id"]) }}'">{{ recipe["recipe_name"] }}</button> -->
+                            <!-- <button onclick="location.href='{{ url_for('views.recipe_page', recipe_id=recipe["recipe_id"]) }}'">{{ recipe["recipe_name"] }}</button> -->
                         </li>
                         {% endfor %}
                     </ul>

@@ -3,10 +3,21 @@
 {% block content %}
 <div class="container mt-4">
     <!-- Button to redirect to meal_plan.html -->
-    <a href="{{ url_for('views.meal_plan') }}" class="btn btn-primary mb-4">I hate it, change automatically</a>
-    <a href="{{ url_for('views.meal_plan') }}" class="btn btn-primary mb-4">Change selections and create new</a>
+    <form id="recipeActionForm" method="POST" action="{{ url_for('views.change_recipe') }}">
+        <input type="hidden" name="recipe_id" id="recipeId" value="{{ recipe.id }}">
+        <button type="submit" id="swapOutBtn" class="btn btn-primary mb-4">Replace this recipe</button>
+        <!-- <button type="button" id="changeSelectionsBtn" class="btn btn-primary mb-4">Change selections and create new</button> -->
+    </form>
 
-    <h1 class="display-4">{{ recipe.name }}</h1>
+
+
+    <div class="d-flex justify-content-between align-items-center">
+        <h1 class="display-4">{{ recipe.name }}</h1>
+        <!-- Button to mark recipe as completed -->
+        <form id="markCompletedForm" method="POST" action="{{ url_for('views.remove_ingredients_from_pantry', recipe_id=recipe.id) }}">
+            <button type="submit" class="btn btn-success">Mark as Completed</button>
+        </form>
+    </div>
 
     <!-- Ingredients -->
     <h2 class="mt-4 text-left">Ingredients</h2>
@@ -53,12 +64,15 @@
 
     <!-- Instructions -->
     <h2 class="mt-4 text-left">Instructions</h2>
-    <ul class="list-group text-left">
-        {% for step in recipe.instructions.split('Step ') if step %}
-        <li class="list-group-item">Step {{ step }}</li>
-        {% endfor %}
-    </ul>
-
+    {% if recipe.instructions %}
+        <ul class="list-group text-left">
+            {% for step in recipe.instructions.split('Step ') if step %}
+            <li class="list-group-item">Step {{ step }}</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+    <p class="text-muted text-left">No instructions available.</p>
+    {% endif %}
 
     <div class="row mt-4">
         <div class="col-md-4">

@@ -8,7 +8,8 @@ from flask import flash, redirect, render_template, request, session, url_for, c
 from flask_login import login_user, login_required, logout_user, current_user
 from .forms import PantryItemForm, RegistrationForm, LoginForm  # import the forms
 from .models import User, Pantry, Item, ShoppingList, MealPlan, Recipe, PantryItem, ShoppingListItem, Meal, Day, Diet, Allergy, UserProfile  # import the models
-from .utils import get_meal_plan, get_meal_plan_details, get_recipe_details_by_ids, extract_recipe_ids, get_user_profile, create_blank_meal_plan, check_for_incomplete_meal_plan, save_day, add_item_to_list, add_missing_or_all_items_to_shopping_list # import the utility functions
+from .utils import get_meal_plan, get_meal_plan_details, get_recipe_details_by_ids, extract_recipe_ids, get_user_profile, create_blank_meal_plan, check_for_incomplete_meal_plan, save_day, add_item_to_list, add_missing_or_all_items_to_shopping_list, remove_recipe_items_from_pantry # import the utility functions
+from mealmuse.tasks import swap_out_recipe
 from werkzeug.security import generate_password_hash, check_password_hash
 from .exceptions import InvalidOutputFormat
 
@@ -153,6 +154,25 @@ def add_group_to_shopping_list():
 
     add_missing_or_all_items_to_shopping_list(current_user, recipe, action)
 
+    referrer = request.referrer
+    return redirect(referrer)
+
+
+@views.route('/remove_ingredients_from_pantry/<int:recipe_id>', methods=['POST'])
+def remove_ingredients_from_pantry(recipe_id):
+    # Fetch recipe details using recipe_id from the database.
+    recipe = db.session.query(Recipe).filter_by(id=recipe_id).first()
+    if not recipe:
+        flash('Recipe not found!', 'error')
+        return redirect(url_for('views.all_recipes'))
+
+    # Mark the recipe as completed 
+    # ...
+
+    # Remove ingredients from the user's pantry
+    remove_recipe_items_from_pantry(current_user, recipe)
+
+    flash('Recipe marked as completed and ingredients removed from pantry.', 'success')
     referrer = request.referrer
     return redirect(referrer)
 
@@ -434,9 +454,21 @@ def generate_meal_plan():
     return jsonify(status="success", message="Meal plan generated!")
 
 
+# Recipe generation; takes parameters of a given recipe and replaces it with a new one
+@views.route('/change_recipe', methods=['POST'])
+def change_recipe():
+    # get the recipe id from the form data
+    recipe_id = request.form.get('recipe_id')
+    user_id = current_user.id
+    swap_out_recipe.delay(recipe_id, user_id)
+    print("recipe swap task sent to celery")
+    # return the user to the meal plan page, the new recipe will  be there once it is done processing
+    return redirect(url_for('views.meal_plan'))
+
+
 # Displays a given recipe in the meal plan page
 @views.route('/recipe/<int:recipe_id>', methods=['GET'])
-def recipe_in_meal_plan_page(recipe_id):
+def recipe_page(recipe_id):
     # Fetch recipe details using recipe_id from the database.
     recipe = db.session.query(Recipe).filter_by(id=recipe_id).first()
     if not recipe:
@@ -445,6 +477,38 @@ def recipe_in_meal_plan_page(recipe_id):
 
     # Render the recipe details page.
     return render_template('recipe.html', recipe=recipe)
+
+
+# Displays all recipes for a given user
+@views.route('/all_recipes', methods=['GET'])
+def all_recipes():
+    # make a list of all recipes for the current user from the database using the user.recipes relationship
+    recipes = []
+    for recipe in current_user.recipes:
+        recipes.append(recipe)
+
+
+    # Render the all_recipes.html page and pass the recipes to it
+    return render_template('all_recipes.html', recipes=recipes)
+
+
+# Delete a recipe from the database
+@views.route('/delete_recipe/<int:recipe_id>', methods=['GET'])
+def delete_recipe(recipe_id):
+    # Fetch recipe details using recipe_id from the database.
+    recipe = db.session.query(Recipe).filter_by(id=recipe_id).first()
+    if not recipe:
+        flash('Recipe not found!', 'error')
+        return redirect(url_for('views.all_recipes'))
+
+    # Delete the recipe
+    db.session.delete(recipe)
+    db.session.commit()
+
+    flash('Recipe deleted successfully.', 'success')
+
+    referrer = request.referrer
+    return redirect(referrer)
 
 
 #Profile: main route

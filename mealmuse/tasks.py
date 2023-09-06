@@ -9,6 +9,7 @@ from mealmuse import db, celery
 from mealmuse.models import User, Pantry, Item, ShoppingList, MealPlan, Recipe, Day, Meal, RecipeItem, ShoppingListItem, PantryItem, UserProfile, Equipment, Allergy, Diet, users_recipes, recipes_mealplans, recipes_meals  # import the models if they are used in the utility functions
 from mealmuse.exceptions import InvalidOutputFormat  
 from mealmuse.prompts  import recipes_prompt_35turbo_v1, meal_plan_system_prompt_gpt4_v2
+
 from test_data import get_recipe, meal_plan_output_gpt_4_v2
 
 load_dotenv(".env")
@@ -38,10 +39,10 @@ def generate_meal_plan(meal_plan_id, user_id):
             user = User.query.filter_by(id=user_id).first()
 
             # get meal plan from openai
-            meal_plan_output = fetch_meal_plan_from_api(meal_plan, user)
+            # meal_plan_output = fetch_meal_plan_from_api(meal_plan, user)
 
             # fake api call for testing
-            # meal_plan_output = meal_plan_output_gpt_4_v2
+            meal_plan_output = meal_plan_output_gpt_4_v2
             
             # save generated meal plan with user selections to database
             meal_plan_id = save_meal_plan_output(meal_plan_output, meal_plan, user)
@@ -72,23 +73,100 @@ def fetch_recipe_details_with_context(meal_plan_id):
         return result
 
 
-# # Meal Plan generation: generate a single recipe
-# @celery.task
-# def generate_recipe(recipe_id, meal_id = None):
-#     app = create_app_instance()
-#     with app.app_context():
-#         try:
-#             recipe = Recipe.query.filter_by(id=recipe_id).first()
-#             recipe_output = fetch_recipe_details(recipe_id)
-#             # fake api call for testing
-#             # recipe_output = get_recipe(recipe.name)
-#             recipe_id = process_recipe_output(recipe_output, recipe_id)
-#         except Exception as e:
-#             db.session.rollback()
-#             print(f"Error occurred: {e}")
-#             db.session.remove()
-#             raise
-#         return recipe_id
+# Meal Plan generation: generate a single recipe
+@celery.task
+def swap_out_recipe(recipe_id, user_id):
+    app = create_app_instance()
+    with app.app_context():
+        try:
+            user = User.query.filter_by(id=user_id).first()
+            old_recipe = Recipe.query.filter_by(id=recipe_id).first()
+            meal = Meal.query.filter_by(id=old_recipe.meals[0].id).first()
+            #get meal plan id from recipes_mealplans table
+            day = Day.query.filter_by(id=meal.day_id).first()
+            meal_plan_id = day.meal_plan_id
+            
+            meal_plan = MealPlan.query.filter_by(id=meal_plan_id).first()
+
+            # get the recipe specific details
+            recipe_cost = old_recipe.cost
+            recipe_time = old_recipe.time
+            recipe_serves = old_recipe.serves   
+            recipe_cuisine = old_recipe.cuisine
+
+            
+            # disassociate the old recipe from the meal
+            meal.recipes.remove(old_recipe)
+            # disassociate the old recipe from the meal plan
+            meal_plan.recipes.remove(old_recipe)
+            db.session.flush()
+            
+            # save new recipe to database with the above details
+            new_recipe = Recipe(
+                name="please generate",
+                cost=recipe_cost,
+                time=recipe_time,
+                serves=recipe_serves
+            )
+            
+            # Add the new recipe to the database
+            db.session.add(new_recipe)
+            db.session.flush()  # To get the ID for the new recipe after adding it
+            
+            # create a string with the old cuisine and a request to not have the old recipe.name again
+            new_recipe.cuisine = recipe_cuisine + f" : anything but {old_recipe.name}"
+            
+            # add ingredients to the new recipe
+            add_available_pantry_items_to_recipe(new_recipe, user, meal, meal_plan)
+
+            # Associate the new recipe with the user
+            user.recipes.append(new_recipe)
+
+            # Associate the new recipe with the meal object
+            meal.recipes.append(new_recipe)
+            db.session.flush()
+
+            # Associate the new recipe with the meal plan
+            meal_plan.recipes.append(new_recipe)
+
+            # generate the new recipe
+            recipe_details = fetch_recipe_details(new_recipe.id)
+
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error occurred: {e}")
+            db.session.remove()
+            raise
+        return recipe_details
+
+            
+# Recipe generation; add available pantry items to a single recipe
+def add_available_pantry_items_to_recipe(recipe, user, meal, meal_plan):
+    from mealmuse.utils import update_item_quantity
+    # first add all items in pantry to the recipe
+    pantry = user.pantry
+    if pantry:
+        for pantry_item in pantry.pantry_items:
+            recipe_item = RecipeItem(recipe_id=recipe.id, item_id=pantry_item.item_id, quantity = pantry_item.quantity, unit = pantry_item.unit)
+            db.session.add(recipe_item)
+    db.session.flush()
+
+    # for each item in the recipe that is also used in the curernt meal plan reduce the amount of the recipe item by the amount used in the meal plan using the update_item_quantity function
+    # make a list of all the ingredients used in the meal plan
+    meal_plan_ingredients = []
+    for recipe in meal_plan.recipes:
+        for recipe_item in recipe.recipe_items:
+            meal_plan_ingredients.append(recipe_item)
+
+    for recipe_item in recipe.recipe_items:
+        for meal_plan_ingredient in meal_plan_ingredients:
+            if recipe_item.item_id == meal_plan_ingredient.item_id:
+                #subtract the mealplan ingredient quantity from the recipe item quantity
+                quantity = -1 * meal_plan_ingredient.quantity              
+                update_item_quantity(recipe_item, quantity, meal_plan_ingredient.unit)
+
+    db.session.commit()
 
 
 # Meal Plan generation; process the user input to create a user prompt in the expected format
@@ -275,6 +353,7 @@ def fetch_recipe_details(recipe_id):
     recipe_user_prompt = create_recipe_user_prompt(recipe)
     recipe_name = recipe.name
     for _ in range(retries):
+            ############################################ RECIPE API CALL ############################################
         response = openai.ChatCompletion.create(
             model=RECIPE_MODEL,
             messages=[
@@ -288,12 +367,11 @@ def fetch_recipe_details(recipe_id):
         # fake the api call for testing
         # recipes_text = get_recipe(recipe.name)
         try:
-            return {recipe.name: process_recipe_output(recipes_text, recipe_id)}
+            return process_recipe_output(recipes_text, recipe_id)
         except InvalidOutputFormat as e:
             print(f"Error processing recipe for {recipe_name}: {e}. Retrying...")
             
     raise Exception(f"Failed to get a valid response for {recipe_name} after {retries} attempts.")
-
 
 # Meal Plan generation; Pull info from db to create a user prompt for a recipe
 def create_recipe_user_prompt(recipe):
@@ -306,7 +384,6 @@ def create_recipe_user_prompt(recipe):
     time = recipe.time
     serves = recipe.serves
     cuisine = recipe.cuisine
-    num_ingredients = recipe.num_ingredients
 
     # get the recipe's ingredients
     ingredients = []
@@ -315,13 +392,12 @@ def create_recipe_user_prompt(recipe):
 
     # create text file with description and the above details
     result = {
-        "Please create a recipe with the following details:" : {
+    "recipe":{
         "name": name,
         "cost": cost,
         "total time to make": time,
         "serves": serves,
-        "total number of ingredients": num_ingredients,
-        "ingredients from pantry to include": ingredients,
+        "ingredients from pantry to consider including": ingredients,
         "cuisine or user requests": cuisine
     }}
 
@@ -354,7 +430,14 @@ def process_recipe_output(data, recipe_id):
         raise InvalidOutputFormat("Output does not have a 'recipe' key")
     
     details = data["recipe"]
-
+    # Validating recipe name
+    if recipe.name == "please generate":
+        name = details.get('name')
+        if not name or not isinstance(name, str):
+            print(f"no name: {name}")
+            raise InvalidOutputFormat("Missing or invalid name for recipe")
+        recipe.name = name
+    
     # Validating ingredients
     ingredients = details.get('ingredients', [])
     if not ingredients or not isinstance(ingredients, list):

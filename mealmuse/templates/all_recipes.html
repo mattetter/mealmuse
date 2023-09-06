@@ -1,0 +1,23 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Your Recipes</h1>
+    {% if recipes %}
+      <!-- Display the list of recipes -->
+      <ul class="list-group">
+          {% for recipe in recipes %}
+            <li class="list-group-item">
+              <a href="{{ url_for('views.recipe_page', recipe_id=recipe.id) }}">
+                {{ recipe.name }}
+              </a>
+              <a href="{{ url_for('views.delete_recipe', recipe_id=recipe.id) }}" class="btn btn-danger btn-sm float-right">Delete</a>
+            </li>
+          {% endfor %}
+      </ul>
+    {% else %}
+      <p class="text-muted">No recipes available.</p>
+    {% endif %}
+</div>
+{% endblock %}
