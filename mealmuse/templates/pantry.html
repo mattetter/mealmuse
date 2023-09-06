@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Pantry Section -->
+    <h3 class="h4 text-center">Pantry</h3>
+    <form action="/add_item" method="post" class="mb-2 d-flex flex-row align-items-center justify-content-center">
+        <input type="text" id="name" name="name" class="form-control form-control-sm me-1" placeholder="Enter item name">
+        <input type="number" id="quantity" name="quantity" step="1" class="form-control form-control-sm me-1" placeholder="Enter quantity (optional)">
+        <input type="text" id="unit" name="unit" class="form-control form-control-sm me-1" placeholder="Enter units (optional)">
+        <input type="hidden" id="list_type" name="list_type" value="pantry">
+        <button type="submit" class="btn btn-primary btn-sm">Add</button>
+    </form>
+
+    <ul class="list-group text-left">
+    {% for item in pantry_items %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            <span>{{ item.item.name }}, {{ item.quantity }} {{ item.unit or '' }}</span>
+            <form action="/remove_item/pantry/{{ item.id }}" class="d-inline item-form">
+                <button type="submit" class="btn btn-link btn-sm" title="Remove all of this item">Remove</button>
+            </form>
+        </li>
+    {% endfor %}
+    </ul>
+</div>
+{% endblock %}

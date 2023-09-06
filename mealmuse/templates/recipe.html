@@ -2,21 +2,26 @@
 
 {% block content %}
 <div class="container mt-4">
-    <!-- Button to redirect to meal_plan.html -->
-    <form id="recipeActionForm" method="POST" action="{{ url_for('views.change_recipe') }}">
-        <input type="hidden" name="recipe_id" id="recipeId" value="{{ recipe.id }}">
-        <button type="submit" id="swapOutBtn" class="btn btn-primary mb-4">Replace this recipe</button>
-        <!-- <button type="button" id="changeSelectionsBtn" class="btn btn-primary mb-4">Change selections and create new</button> -->
-    </form>
+
 
 
 
     <div class="d-flex justify-content-between align-items-center">
+        <!-- Recipe name -->
         <h1 class="display-4">{{ recipe.name }}</h1>
+
         <!-- Button to mark recipe as completed -->
         <form id="markCompletedForm" method="POST" action="{{ url_for('views.remove_ingredients_from_pantry', recipe_id=recipe.id) }}">
-            <button type="submit" class="btn btn-success">Mark as Completed</button>
+            <button type="submit" class="btn btn-success mb-4" title="Remove all ingredients from your pantry">Mark as Completed</button>
         </form>
+
+            <!-- Button to replace recipe in meal plan -->
+        <form id="recipeActionForm" method="POST" action="{{ url_for('views.change_recipe') }}">
+            <input type="hidden" name="recipe_id" id="recipeId" value="{{ recipe.id }}">
+            <button type="submit" id="swapOutBtn" class="btn btn-danger mb-4" title="Swap out this recipe in the meal plan, it will still exist in the recipes list">Replace this recipe</button>
+            <!-- <button type="button" id="changeSelectionsBtn" class="btn btn-primary mb-4">Change selections and create new</button> -->
+        </form>
+
     </div>
 
     <!-- Ingredients -->

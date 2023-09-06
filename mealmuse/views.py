@@ -8,7 +8,7 @@ from flask import flash, redirect, render_template, request, session, url_for, c
 from flask_login import login_user, login_required, logout_user, current_user
 from .forms import PantryItemForm, RegistrationForm, LoginForm  # import the forms
 from .models import User, Pantry, Item, ShoppingList, MealPlan, Recipe, PantryItem, ShoppingListItem, Meal, Day, Diet, Allergy, UserProfile  # import the models
-from .utils import get_meal_plan, get_meal_plan_details, get_recipe_details_by_ids, extract_recipe_ids, get_user_profile, create_blank_meal_plan, check_for_incomplete_meal_plan, save_day, add_item_to_list, add_missing_or_all_items_to_shopping_list, remove_recipe_items_from_pantry # import the utility functions
+from .utils import get_meal_plan, get_meal_plan_details, get_recipe_details_by_ids, extract_recipe_ids, get_user_profile, create_blank_meal_plan, check_for_incomplete_meal_plan, save_day, add_item_to_list, add_missing_or_all_items_to_shopping_list, remove_recipe_items_from_pantry, update_item_quantity # import the utility functions
 from mealmuse.tasks import swap_out_recipe
 from werkzeug.security import generate_password_hash, check_password_hash
 from .exceptions import InvalidOutputFormat
@@ -89,10 +89,9 @@ def before_request():
         login_user(user)
 
 
-
-@views.route('/pantry_and_list')
+@views.route('/pantry')
 @login_required
-def pantry_and_list():
+def pantry():
     # Assume we have a current_user object that represents the logged-in user
     user = User.query.get(current_user.id)
 
@@ -101,17 +100,31 @@ def pantry_and_list():
         pantry = Pantry(user=user)
         db.session.add(pantry)
     
+    db.session.commit()
+
+    # Fetch pantry and shopping list items for the current user from the database
+    pantry_items = user.pantry.pantry_items if user.pantry else []
+
+    return render_template('pantry.html', pantry_items=pantry_items)
+
+
+
+@views.route('/shopping_list')
+@login_required
+def shopping_list():
+    # Assume we have a current_user object that represents the logged-in user
+    user = User.query.get(current_user.id)
+
     if not user.shopping_list:
         shopping_list = ShoppingList(user=user)
         db.session.add(shopping_list)
 
     db.session.commit()
 
-    # Fetch pantry and shopping list items for the current user from the database
-    pantry_items = user.pantry.pantry_items if user.pantry else []
     shopping_list_items = user.shopping_list.shopping_list_items if user.shopping_list else []
 
-    return render_template('pantry_and_list.html', pantry_items=pantry_items, shopping_list_items=shopping_list_items)
+    return render_template('shopping_list.html', shopping_list_items=shopping_list_items)
+
 
 @views.route('/add_item', methods=['GET', 'POST'])
 def add_item():
@@ -129,13 +142,14 @@ def add_item():
 # Edit an existing item in the pantry or shopping list
 @views.route('/remove_item/<string:list_type>/<int:item_id>')
 def remove_item(list_type, item_id):
+    referrer = request.referrer
     if list_type == "pantry":
         item = PantryItem.query.get(item_id)
     elif list_type == "shopping_list":
         item = ShoppingListItem.query.get(item_id)
     else:
         flash("Invalid list type!")
-        return redirect(url_for('pantry_and_list'))
+        return redirect(referrer)
 
     if item:
         db.session.delete(item)
@@ -143,7 +157,23 @@ def remove_item(list_type, item_id):
     else:
         flash("Item not found!")
     
-    return redirect(url_for('views.pantry_and_list'))
+    return redirect(referrer)
+
+
+# Edit an existing item in the pantry or shopping list
+@views.route('/mark_as_purchased/<int:item_id>')
+def mark_as_purchased(item_id):
+    referrer = request.referrer
+    item = ShoppingListItem.query.get(item_id)
+    name = item.item.name
+    quantity = item.quantity
+    unit = item.unit
+    add_item_to_list(current_user, name, quantity, "pantry", unit)
+
+    db.session.delete(item)
+    db.session.commit()
+    
+    return redirect(referrer)
 
 # add the ingredients for a recipe to the shopping list
 @views.route('/add_group_to_shopping_list', methods=['POST'])

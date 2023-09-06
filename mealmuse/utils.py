@@ -222,101 +222,101 @@ def remove_recipe_items_from_pantry(user, recipe):
     db.session.commit()
 
 
-# Shopping list: add one ingredient
-def add_ingredient_to_user_shopping_list(user, ingredient):
-    ingredient_name = ingredient['name']
-    quantity = ingredient['quantity']
-    unit = ingredient['unit']
+# # Shopping list: add one ingredient
+# def add_ingredient_to_user_shopping_list(user, ingredient):
+#     ingredient_name = ingredient['name']
+#     quantity = ingredient['quantity']
+#     unit = ingredient['unit']
 
-    # Check if the user has a shopping list, if not create one
-    shopping_list = user.shopping_list
-    if not shopping_list:
-        shopping_list = ShoppingList(user_id=user.id)
-        db.session.add(shopping_list)
+#     # Check if the user has a shopping list, if not create one
+#     shopping_list = user.shopping_list
+#     if not shopping_list:
+#         shopping_list = ShoppingList(user_id=user.id)
+#         db.session.add(shopping_list)
 
-    # Check if the ingredient (as an Item) is already in the database, if not add it
-    item = db.session.query(Item).filter_by(name=ingredient_name).first()
-    if not item:
-        item = Item(name=ingredient_name)
-        db.session.add(item)
+#     # Check if the ingredient (as an Item) is already in the database, if not add it
+#     item = db.session.query(Item).filter_by(name=ingredient_name).first()
+#     if not item:
+#         item = Item(name=ingredient_name)
+#         db.session.add(item)
 
-    # Check if the ingredient (as a ShoppingListItem) is already in the user's shopping list
-    existing_list_item = db.session.query(ShoppingListItem).join(ShoppingList).join(Item).filter(Item.name == ingredient_name, ShoppingList.user_id == user.id).first()
-    if existing_list_item:
-        # Create pint quantities for the existing item and the new quantity to be added
-        try:
-            additional_quantity = quantity * ureg(unit)
-        except pint.errors.UndefinedUnitError:
-            # If the unit is undefined, treat the units as matching
-            additional_quantity = quantity 
+#     # Check if the ingredient (as a ShoppingListItem) is already in the user's shopping list
+#     existing_list_item = db.session.query(ShoppingListItem).join(ShoppingList).join(Item).filter(Item.name == ingredient_name, ShoppingList.user_id == user.id).first()
+#     if existing_list_item:
+#         # Create pint quantities for the existing item and the new quantity to be added
+#         try:
+#             additional_quantity = quantity * ureg(unit)
+#         except pint.errors.UndefinedUnitError:
+#             # If the unit is undefined, treat the units as matching
+#             additional_quantity = quantity 
 
-        # If the units match, just add the quantity
-        if existing_list_item.unit == unit:
-            existing_list_item.quantity += round(quantity, 2)  # round to 2 decimal places
-        else:
-            # Try to convert the new quantity to the unit of the existing item
-            try:
-                converted_additional_quantity = additional_quantity.to(existing_list_item.unit)
-                # Add the rounded converted magnitude to the existing quantity
-                existing_list_item.quantity += round(converted_additional_quantity.magnitude, 2) 
-            # If there's a conversion error, leave the units in the shopping list as they are
-            except pint.errors.UndefinedUnitError:
-                existing_list_item.quantity += round(additional_quantity, 2)
-     # If item is not present in the shopping list, add it
-    else:
-        shopping_list_item = ShoppingListItem(item_id=item.id, item=item, shopping_list_id=shopping_list.id, quantity=quantity, unit=unit)
-        db.session.add(shopping_list_item)
-    db.session.commit()
+#         # If the units match, just add the quantity
+#         if existing_list_item.unit == unit:
+#             existing_list_item.quantity += round(quantity, 2)  # round to 2 decimal places
+#         else:
+#             # Try to convert the new quantity to the unit of the existing item
+#             try:
+#                 converted_additional_quantity = additional_quantity.to(existing_list_item.unit)
+#                 # Add the rounded converted magnitude to the existing quantity
+#                 existing_list_item.quantity += round(converted_additional_quantity.magnitude, 2) 
+#             # If there's a conversion error, leave the units in the shopping list as they are
+#             except pint.errors.UndefinedUnitError:
+#                 existing_list_item.quantity += round(additional_quantity, 2)
+#      # If item is not present in the shopping list, add it
+#     else:
+#         shopping_list_item = ShoppingListItem(item_id=item.id, item=item, shopping_list_id=shopping_list.id, quantity=quantity, unit=unit)
+#         db.session.add(shopping_list_item)
+#     db.session.commit()
 
-# Shopping list; remove specified amount of one ingredient
-def remove_ingredient_from_user_shopping_list(user, ingredient, remove_entirely=False):
-    ingredient_name = ingredient['name']
-    quantity = ingredient['quantity']
-    unit = ingredient['unit']
+# # Shopping list; remove specified amount of one ingredient
+# def remove_ingredient_from_user_shopping_list(user, ingredient, remove_entirely=False):
+#     ingredient_name = ingredient['name']
+#     quantity = ingredient['quantity']
+#     unit = ingredient['unit']
 
-    # Check if the user has a shopping list. If not, there's nothing to remove
-    shopping_list = user.shopping_list
-    if not shopping_list:
-        return
+#     # Check if the user has a shopping list. If not, there's nothing to remove
+#     shopping_list = user.shopping_list
+#     if not shopping_list:
+#         return
 
-    # Check if the ingredient (as an Item) is in the database
-    item = db.session.query(Item).filter_by(name=ingredient_name).first()
-    if not item:
-        # If item is not in the database, it can't be in the shopping list
-        print(f"{ingredient_name} not found in the database")
-        return
+#     # Check if the ingredient (as an Item) is in the database
+#     item = db.session.query(Item).filter_by(name=ingredient_name).first()
+#     if not item:
+#         # If item is not in the database, it can't be in the shopping list
+#         print(f"{ingredient_name} not found in the database")
+#         return
 
-    # Check if the ingredient (as a ShoppingListItem) is in the user's shopping list
-    existing_list_item = db.session.query(ShoppingListItem).join(ShoppingList).join(Item).filter(Item.name == ingredient_name, ShoppingList.user_id == user.id).first()
+#     # Check if the ingredient (as a ShoppingListItem) is in the user's shopping list
+#     existing_list_item = db.session.query(ShoppingListItem).join(ShoppingList).join(Item).filter(Item.name == ingredient_name, ShoppingList.user_id == user.id).first()
     
-    if existing_list_item:
-        if remove_entirely:
-            db.session.delete(existing_list_item)
-            return
+#     if existing_list_item:
+#         if remove_entirely:
+#             db.session.delete(existing_list_item)
+#             return
         
-        # Create pint quantities for the existing item and the quantity to be removed
-        try:
-            quantity_to_remove = quantity * ureg(unit)
-        except pint.errors.UndefinedUnitError:
-            # If there's an undefined unit, treat the units as matching
-            quantity_to_remove = quantity
+#         # Create pint quantities for the existing item and the quantity to be removed
+#         try:
+#             quantity_to_remove = quantity * ureg(unit)
+#         except pint.errors.UndefinedUnitError:
+#             # If there's an undefined unit, treat the units as matching
+#             quantity_to_remove = quantity
 
-        # If the units match, just subtract the quantity
-        if existing_list_item.unit == unit:
-            existing_list_item.quantity -= round(quantity, 2)  # round to 2 decimal places
-        else:
-            # Try to convert the quantity to remove to the unit of the existing item
-            try:
-                converted_quantity_to_remove = quantity_to_remove.to(existing_list_item.unit)
-                existing_list_item.quantity -= round(converted_quantity_to_remove.magnitude, 2)
-            # If there's a conversion error, leave the units in the shopping list as they are
-            except pint.errors.UndefinedUnitError:
-                existing_list_item.quantity -= round(quantity_to_remove, 2)
+#         # If the units match, just subtract the quantity
+#         if existing_list_item.unit == unit:
+#             existing_list_item.quantity -= round(quantity, 2)  # round to 2 decimal places
+#         else:
+#             # Try to convert the quantity to remove to the unit of the existing item
+#             try:
+#                 converted_quantity_to_remove = quantity_to_remove.to(existing_list_item.unit)
+#                 existing_list_item.quantity -= round(converted_quantity_to_remove.magnitude, 2)
+#             # If there's a conversion error, leave the units in the shopping list as they are
+#             except pint.errors.UndefinedUnitError:
+#                 existing_list_item.quantity -= round(quantity_to_remove, 2)
 
-        # If the quantity becomes less than or equal to zero, remove the item from the shopping list
-        if existing_list_item.quantity <= 0:
-            db.session.delete(existing_list_item)
-            db.session.commit()
+#         # If the quantity becomes less than or equal to zero, remove the item from the shopping list
+#         if existing_list_item.quantity <= 0:
+#             db.session.delete(existing_list_item)
+#             db.session.commit()
 
 # Pantry; add one ingredient to the user's pantry
 def add_ingredient_to_user_pantry(user, ingredient):
