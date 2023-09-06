@@ -43,7 +43,7 @@ def login():
 @login_required
 def logout():
     logout_user()
-    return redirect(url_for('login'))
+    return redirect(url_for('views.login'))
 
 
 @views.route('/register', methods=['GET', 'POST'])
@@ -59,11 +59,11 @@ def register():
             flash('Passwords do not match.', 'danger')
         else:
             hashed_password = generate_password_hash(password, method='sha256')
-            new_user = User(username=username, email="test@test.test", password=hashed_password)
+            new_user = User(username=username, password=hashed_password)
             db.session.add(new_user)
             db.session.commit()
             flash('You have been registered successfully.', 'success')
-            return redirect(url_for('login'))
+            return redirect(url_for('views.login'))
         
     return render_template('register.html')
 
@@ -71,22 +71,27 @@ def register():
 #automatically create tables and log in test user
 @views.before_request
 def before_request():
+        # redirect to login page
+    allowed_routes = ['login', 'register']
+    if request.endpoint not in [f'views.{route}' for route in allowed_routes]:
+        if not current_user.is_authenticated:
+            return redirect(url_for('views.login'))
+    
+    # # # USE THIS ONLY FOR TESTING PURPOSES
+    # # If there's no user logged in
+    # if not current_user.is_authenticated:
 
-    # # Create the database tables for our data models
-    # db.create_all()
-    # If there's no user logged in
-    if not current_user.is_authenticated:
+        
+    #     # check if the test user exists
+    #     user = User.query.filter_by(username="testuser").first()
+    #     if not user:
+    #         # Create a test user
+    #         user = User(id=1, username="testuser", email="testuser@email.com", password=generate_password_hash("testpassword"))
+    #         db.session.add(user)
+    #         db.session.commit()
 
-        # check if the test user exists
-        user = User.query.filter_by(username="testuser").first()
-        if not user:
-            # Create a test user
-            user = User(id=1, username="testuser", email="testuser@email.com", password=generate_password_hash("testpassword"))
-            db.session.add(user)
-            db.session.commit()
-
-        # log the user in
-        login_user(user)
+    #     # log the user in
+    #     login_user(user)
 
 
 @views.route('/pantry')

@@ -33,7 +33,7 @@ class TestUtilsFunctions(unittest.TestCase):
 
     def tearDown(self):
         db.session.remove()
-        # db.drop_all()
+        db.drop_all()
         self.app_context.pop()
     
     def test_get_meal_plan(self):
