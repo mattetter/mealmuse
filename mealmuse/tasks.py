@@ -39,10 +39,10 @@ def generate_meal_plan(meal_plan_id, user_id):
             user = User.query.filter_by(id=user_id).first()
 
             # get meal plan from openai
-            # meal_plan_output = fetch_meal_plan_from_api(meal_plan, user)
+            meal_plan_output = fetch_meal_plan_from_api(meal_plan, user)
 
             # fake api call for testing
-            meal_plan_output = meal_plan_output_gpt_4_v2
+            # meal_plan_output = meal_plan_output_gpt_4_v2
             
             # save generated meal plan with user selections to database
             meal_plan_id = save_meal_plan_output(meal_plan_output, meal_plan, user)

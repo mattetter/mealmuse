@@ -172,7 +172,7 @@ def mark_as_purchased(item_id):
 
     db.session.delete(item)
     db.session.commit()
-    
+
     return redirect(referrer)
 
 # add the ingredients for a recipe to the shopping list
@@ -388,6 +388,9 @@ def select_items():
         flash("No day selected!", "error")
         return redirect(url_for('views.meal_plan'))
     
+    user_profile = UserProfile.query.filter_by(user_id=current_user.id).first()
+    default_family_size = user_profile.family_size if user_profile else 1
+    
     if request.method == 'POST':
         # Get the selected items from the form data
         meals_data = {}
@@ -454,7 +457,7 @@ def select_items():
 
     # Format the date to display
     formatted_day = current_day_datetime.strftime("%A, %B %d")
-    return render_template('select_items.html', current_day=formatted_day, datetime=datetime)
+    return render_template('select_items.html', current_day=formatted_day, datetime=datetime, default_family_size=default_family_size)
 
 
 # Meal Plan: loading screen
