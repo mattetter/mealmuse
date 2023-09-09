@@ -26,9 +26,12 @@ ureg.define('smidgen = 0.03125 teaspoon = sm')
 # Meal Plan Generation; Generates a meal plan based on the user's preferences
 def get_meal_plan(meal_plan_id, user_id):
 
+    profile = UserProfile.query.filter_by(user_id=user_id).first()
+    meal_plan_temp = profile.meal_plan_temperature if profile else 1
+    db.session.remove()
     print("getting meal plan")
 
-    generate_meal_plan.delay(meal_plan_id, user_id)
+    generate_meal_plan.delay(meal_plan_id, user_id, meal_plan_temp)
 
 
 # Meal Plan Generation; Generates a single recipe based on the user's preferences

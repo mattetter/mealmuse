@@ -25,16 +25,8 @@ class UserProfile(db.Model):
     leftovers = db.Column(db.String, default="I'm okay with leftovers, but prefer variety")
     cuisine_requests = db.Column(db.String(200), default="Any")
     meal_diversity = db.Column(db.Float, default=0.5)
-    calorie_range = db.Column(db.String(80), default="2000-2500")
-    protein_range = db.Column(db.String(80), default="50-100")
-    fat_range = db.Column(db.String(80), default="50-100")
-    carbs_range = db.Column(db.String(80), default="50-100")
-    fiber = db.Column(db.String(80), default="50-100")
-    sugar = db.Column(db.String(80), default="50-100")
-    sodium = db.Column(db.String(80), default="50-100")
-    cholesterol = db.Column(db.String(80), default="50-100")
-
-
+    meal_plan_temperature = db.Column(db.Float, default=1.0)
+    recipe_temperature = db.Column(db.Float, default=1.0)
 
 class Allergy(db.Model):
     id = db.Column(db.Integer, primary_key=True)

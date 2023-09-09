@@ -1,101 +1,110 @@
 {% extends "base.html" %}
 
 {% block content %}
-
 <div class="container mt-3">
-    <!-- Link to go back to Meal Planning -->
-    <div class="mb-3">
-        <a href="{{ url_for('views.meal_plan') }}" class="btn btn-secondary">Back to Meal Planning</a>
-    </div>
-    <button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#family_size" aria-expanded="false" aria-controls="family_size">Change your default family size</button>
-
-    <div class="collapse mb-4 container" id="family_size">
-        <div class="container mt-5">
-            <h2 class="mb-4">How many people will this feed?</h2>
-            <p class="mb-4">You can make further selections by day and by meal later.</p>
-            
-            <form action="{{ url_for('views.family_size') }}" method="post">
-                <div class="form-group">
-                    <label for="familySize">Select the number of family members:</label>
-                    <select id="familySize" name="family_size" class="form-control">
-                        <option value="" disabled {% if not current_family_size %}selected{% endif %}>Select a family size</option>
-                        {% for i in range(1, 11) %}
-                            <option value="{{ i }}" {% if i == current_family_size %}selected{% endif %}>{{ i }} {% if i == 1 %}person{% else %}people{% endif %}</option>
-                        {% endfor %}
-                        <!-- ... add more options as needed -->
-                    </select>                    
-                </div>
-                <button type="submit" class="btn btn-primary">Select Size</button>
-            </form>
-        </div>
-        
-    </div>
-    <button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#proficiency" aria-expanded="false" aria-controls="proficiency">Change your level of culinary expertise</button>
-
-    <div class="collapse mb-4 container" id="proficiency">
-        <div class="container mt-5">
-            <h2 class="mb-4">Select Your Cooking Proficiency</h2>
-            
-            <form action="{{ url_for('views.proficiency') }}" method="post">
-                <div class="form-group">
-                    <label for="cookingProficiency">Choose your level:</label>
-                    <select id="cookingProficiency" name="proficiency" class="form-control">
-                        <option value="" disabled {% if not current_proficiency %}selected{% endif %}>Select an option</option>
-                        <option value="Burn Water" {% if current_proficiency == "Burn Water" %}selected{% endif %}>I could burn water</option>
-                        <option value="Beginner" {% if current_proficiency == "Beginner" %}selected{% endif %}>Beginner: I can make basic dishes with clear instructions</option>
-                        <option value="Intermediate" {% if current_proficiency == "Intermediate" %}selected{% endif %}>Intermediate: I can handle most recipes and occasionally experiment</option>
-                        <option value="Advanced" {% if current_proficiency == "Advanced" %}selected{% endif %}>Advanced: I'm pretty comfortable in the kitchen and like to try new things</option>
-                        <option value="Expert" {% if current_proficiency == "Expert" %}selected{% endif %}>Expert: Friends and family often come to me for cooking advice</option>
-                        <option value="Professional Chef" {% if current_proficiency == "Professional Chef" %}selected{% endif %}>I am a professional chef</option>
-                    </select>
-                </div>
-                <button type="submit" class="btn btn-primary">Submit Proficiency</button>
-            </form>
-        </div>
-        
-    </div>
-
-
-    <div></div>
     <div class="row">
+        <!-- Left half of the page: Allergies & Dietary Restrictions -->
+        
         <!-- Dietary Restrictions Section -->
-        <div class="col-md-6">
+        <div class="col-md-3">
             <h3 class="h4">Dietary Restrictions</h3>
             <form action="{{ url_for('views.add_dietary_restriction') }}" method="post" class="mb-2">
                 <div class="mb-2">
-                    <label for="restriction" class="form-label small">Restriction:</label>
-                    <input type="text" id="restriction" name="restriction" class="form-control form-control-sm">
+                    <input type="text" id="restriction" name="restriction" class="form-control form-control-sm" placeholder="e.g. 'vegan' or 'I hate asparagus">
                 </div>
                 <button type="submit" class="btn btn-primary btn-sm">Add Restriction</button>
             </form>
-            <ul class="list-group">
-            {% for restriction in dietary_restrictions %}
+            <ul class="list-group mb-4">
+                {% for restriction in dietary_restrictions %}
                 <li class="list-group-item py-1 d-flex justify-content-between align-items-center small">
                     {{ restriction }}
                     <a href="{{ url_for('views.remove_dietary_restriction', restriction_name=restriction) }}" class="btn btn-danger btn-sm">Remove</a>
                 </li>
-            {% endfor %}
+                {% endfor %}
             </ul>
         </div>
 
         <!-- Allergies Section -->
-        <div class="col-md-6">
+        <div class="col-md-3">
             <h3 class="h4">Allergies</h3>
             <form action="{{ url_for('views.add_allergy') }}" method="post" class="mb-2">
                 <div class="mb-2">
-                    <label for="allergy" class="form-label small">Allergy:</label>
-                    <input type="text" id="allergy" name="allergy" class="form-control form-control-sm">
+                    <input type="text" id="allergy" name="allergy" class="form-control form-control-sm" placeholder="e.g 'peanuts' or 'parakeets'">
                 </div>
                 <button type="submit" class="btn btn-primary btn-sm">Add Allergy</button>
             </form>
             <ul class="list-group">
-            {% for allergy in allergies %}
+                {% for allergy in allergies %}
                 <li class="list-group-item py-1 d-flex justify-content-between align-items-center small">
                     {{ allergy }}
                     <a href="{{ url_for('views.remove_allergy', allergy_name=allergy) }}" class="btn btn-danger btn-sm">Remove</a>
                 </li>
-            {% endfor %}
+                {% endfor %}
             </ul>
+        </div>
+
+        <!-- Right half of the page: Buttons & Dropdowns & Slider -->
+        <div class="col-md-6">
+            <br>
+            <button class="btn btn-primary mb-3" type="button" data-toggle="collapse" data-target="#family_size" aria-expanded="false" aria-controls="family_size">Change your default family size</button>
+            
+            <div class="collapse mb-3 container" id="family_size">
+                <h2 class="mb-4">How many people will this feed?</h2>
+                <p class="mb-4">You can make further selections by day and by meal later.</p>
+                <form action="{{ url_for('views.family_size') }}" method="post">
+                    <div class="form-group">
+                        <label for="familySize">Select the number of family members:</label>
+                        <select id="familySize" name="family_size" class="form-control">
+                            <option value="" disabled {% if not profile.family_size %}selected{% endif %}>Select a family size</option>
+                            {% for i in range(1, 11) %}
+                                <option value="{{ i }}" {% if i == profile.family_size %}selected{% endif %}>{{ i }} {% if i == 1 %}person{% else %}people{% endif %}</option>
+                            {% endfor %}                            
+                        </select>                    
+                    </div>
+                    <button type="submit" class="btn btn-primary">Select Size</button>
+                </form>
+            </div>
+        <br>
+            <button class="btn btn-primary mb-3" type="button" data-toggle="collapse" data-target="#proficiency" aria-expanded="false" aria-controls="proficiency">Change your level of culinary expertise</button>
+  
+            <div class="collapse mb-3 container" id="proficiency">
+                <h2 class="mb-4">Select Your Cooking Proficiency</h2>
+                <form action="{{ url_for('views.proficiency') }}" method="post">
+                    <div class="form-group">
+                        <label for="cookingProficiency">Choose your level:</label>
+                        <select id="cookingProficiency" name="proficiency" class="form-control">
+                            <option value="" disabled {% if not profile.proficiency %}selected{% endif %}>Select an option</option>
+                            <option value="Burn Water" {% if profile.proficiency == "Burn Water" %}selected{% endif %}>I could burn water</option>
+                            <option value="Beginner" {% if profile.proficiency == "Beginner" %}selected{% endif %}>Beginner: I can make basic dishes with clear instructions</option>
+                            <option value="Intermediate" {% if profile.proficiency == "Intermediate" %}selected{% endif %}>Intermediate: I can handle most recipes and occasionally experiment</option>
+                            <option value="Advanced" {% if profile.proficiency == "Advanced" %}selected{% endif %}>Advanced: I'm pretty comfortable in the kitchen and like to try new things</option>
+                            <option value="Expert" {% if profile.proficiency == "Expert" %}selected{% endif %}>Expert: Friends and family often come to me for cooking advice</option>
+                            <option value="Professional Chef" {% if profile.proficiency == "Professional Chef" %}selected{% endif %}>I am a professional chef</option>                            
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Submit Proficiency</button>
+                </form>
+            </div>
+        <br>
+        <form action="{{ url_for('views.update_temperatures') }}" method="post" class="row">
+            <!-- Temperature Sliders -->
+            <div class="mt-4">
+                <label for="recipeTempSlider">Recipe Variation   :</label>
+                <input type="range" class="custom-range" id="recipeTempSlider" name="recipeTemp" min="0.75" max="2" step="0.05" value="{{ profile.recipe_temperature }}" style="width: 45%; display: inline-block; margin-right: 5%;">
+                <label for="mealPlanTempSlider">Meal Plan Variation:</label>
+                <input type="range" class="custom-range" id="mealPlanTempSlider" name="mealPlanTemp" min="0.75" max="2" step="0.05" value="{{ profile.meal_plan_temperature }}" style="width: 45%; display: inline-block;">
+                <small class="d-block">Fewer errors<span class="float-right">More variety </span></small>
+            </div>
+
+            
+            <!-- Submit button -->
+            <div class="col-12 mt-2">
+                <button type="submit" class="btn btn-primary">Save Temperatures</button>
+            </div>
+        </form>
+        
+        
+        </div>
         </div>
     </div>
 </div>

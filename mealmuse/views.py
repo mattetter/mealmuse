@@ -77,7 +77,7 @@ def register():
             user_profile = UserProfile(user=new_user)
             db.session.add(user_profile)
             db.session.commit()
-            
+
             flash('You have been registered successfully.', 'success')
             return redirect(url_for('views.login'))
         
@@ -104,6 +104,20 @@ def before_request():
             db.session.add(user)
             db.session.commit()
 
+            # Create a pantry for the user
+            pantry = Pantry(user=new_user)
+            db.session.add(pantry)
+
+            # Create a shopping list for the user
+            shopping_list = ShoppingList(user=new_user)
+            db.session.add(shopping_list)
+
+            # Create a user profile for the user
+            user_profile = UserProfile(user=new_user)
+            db.session.add(user_profile)
+            db.session.commit()
+            
+
         # log the user in
         login_user(user)
 
@@ -113,6 +127,11 @@ def before_request():
 def pantry():
     # Assume we have a current_user object that represents the logged-in user
     user = User.query.get(current_user.id)
+
+    if not user.pantry:
+        pantry = Pantry(user=user)
+        db.session.add(pantry)
+        db.session.commit()
 
     # Fetch pantry and shopping list items for the current user from the database
     pantry_items = user.pantry.pantry_items if user.pantry else []
@@ -573,12 +592,7 @@ def profile():
     allergies = [allergy.name for allergy in user.allergies]
     dietary_restrictions = [diet.name for diet in user.diets]
 
-        # Fetch proficiency and family size for the user
-    profile = UserProfile.query.filter_by(user_id=current_user.id).first()
-    current_proficiency = profile.proficiency if profile else None
-    current_family_size = profile.family_size if profile else None
-    print (current_proficiency)
-    return render_template('profile.html', allergies=allergies, dietary_restrictions=dietary_restrictions, current_proficiency=current_proficiency, current_family_size=current_family_size)
+    return render_template('profile.html', allergies=allergies, dietary_restrictions=dietary_restrictions, profile=profile)
 
 
 # Profile: choose your proficiency level
@@ -727,3 +741,30 @@ def update_meal_plan_settings():
         flash(f"Error updating settings: {e}", category="error")
 
     return redirect(url_for('views.meal_plan'))
+
+
+# Update both recipe and meal plan temperatures change randomness of api output
+@views.route('/update_temperatures', methods=["POST"])
+@login_required
+def update_temperatures():
+    recipe_value = request.form.get("recipeTemp")  # Fetch value from the recipe slider
+    meal_plan_value = request.form.get("mealPlanTemp")  # Fetch value from the meal plan slider
+
+    if recipe_value and meal_plan_value:
+        try:
+            recipe_value = float(recipe_value)
+            meal_plan_value = float(meal_plan_value)
+
+            # Update the user's profile
+            profile = UserProfile.query.filter_by(user_id=current_user.id).first()
+            profile.recipe_temperature = recipe_value
+            profile.meal_plan_temperature = meal_plan_value
+            db.session.commit()
+            flash("Temperatures updated successfully!", "success")
+        except ValueError:
+            flash("Invalid values provided for temperatures.", "danger")
+    else:
+        flash("Failed to update temperatures.", "danger")
+    return redirect(url_for('views.profile'))
+
+

@@ -30,10 +30,10 @@ def create_app_instance():
 
 
 @celery.task
-def generate_meal_plan(meal_plan_id, user_id):
+def generate_meal_plan(meal_plan_id, user_id, temp):
 
     # get meal plan from openai
-    meal_plan_output = fetch_meal_plan_from_api(meal_plan_id, user_id)
+    meal_plan_output = fetch_meal_plan_from_api(meal_plan_id, user_id, temp)
 
     # fake api call for testing
     # meal_plan_output = meal_plan_output_gpt_4_v2 
@@ -42,18 +42,19 @@ def generate_meal_plan(meal_plan_id, user_id):
     meal_plan_id = save_meal_plan_output_with_context(meal_plan_output, meal_plan_id, user_id)
 
     # fetch recipe details in parallel
-    fetch_recipe_details_with_context(meal_plan_id)
+    fetch_recipe_details_with_context(meal_plan_id, user_id)
 
     return meal_plan_id
 
 
 # Meal Plan generation; wrap the recipe api call in a function to be used in parallel
-def fetch_recipe_details_with_context(meal_plan_id):
+def fetch_recipe_details_with_context(meal_plan_id, user_id):
     app = create_app_instance()
     with app.app_context():
         try:
             meal_plan = MealPlan.query.filter_by(id=meal_plan_id).first()
-            
+            profile = UserProfile.query.filter_by(user_id=user_id).first()
+            temp = profile.recipe_temperature
             # create a list of recipe ids in plan
             recipe_ids = []
             for recipe in meal_plan.recipes:
@@ -65,7 +66,7 @@ def fetch_recipe_details_with_context(meal_plan_id):
             print(f"Error occurred: {e}")
             db.session.remove()
             raise
-        result = [fetch_recipe_details.delay(recipe_id) for recipe_id in recipe_ids]
+        result = [fetch_recipe_details.delay(recipe_id, temp) for recipe_id in recipe_ids]
         return result
 
 
@@ -78,10 +79,10 @@ def swap_out_recipe(recipe_id, user_id):
             user = User.query.filter_by(id=user_id).first()
             old_recipe = Recipe.query.filter_by(id=recipe_id).first()
             meal = Meal.query.filter_by(id=old_recipe.meals[0].id).first()
-            #get meal plan id from recipes_mealplans table
             day = Day.query.filter_by(id=meal.day_id).first()
             meal_plan_id = day.meal_plan_id
-            
+            profile = UserProfile.query.filter_by(user_id=user_id).first()
+            recipe_temperature = profile.recipe_temperature or 1
             meal_plan = MealPlan.query.filter_by(id=meal_plan_id).first()
 
             # get the recipe specific details
@@ -126,7 +127,7 @@ def swap_out_recipe(recipe_id, user_id):
             meal_plan.recipes.append(new_recipe)
 
             # generate the new recipe
-            recipe_details = fetch_recipe_details(new_recipe.id)
+            recipe_details = fetch_recipe_details(new_recipe.id, recipe_temperature)
 
             db.session.commit()
         except Exception as e:
@@ -273,7 +274,7 @@ def create_meal_plan_user_prompt(user, meal_plan):
 
 
 # Meal Plan generation; the api call to get a meal plan
-def fetch_meal_plan_from_api(meal_plan_id, user_id):
+def fetch_meal_plan_from_api(meal_plan_id, user_id, temp=1):
     
     # Create the user prompt
     user_prompt = create_meal_plan_user_prompt_with_context(user_id, meal_plan_id)
@@ -284,7 +285,7 @@ def fetch_meal_plan_from_api(meal_plan_id, user_id):
             {"role": "user", "content": user_prompt},
         ],
         max_tokens=3000,
-        temperature=1,
+        temperature=temp,
     )
     meal_plan_text = response.choices[0].message['content']
 
@@ -373,7 +374,7 @@ def save_meal_plan_output(meal_plan_json, meal_plan, user):
 
 # Meal Plan generation; the api call to get a recipe
 @celery.task
-def fetch_recipe_details(recipe_id, recipe_name=None):
+def fetch_recipe_details(recipe_id, temp=1):
 
     # for testing only
     # recipe = db.session.query(Recipe).filter_by(id=recipe_id).first()
@@ -392,7 +393,7 @@ def fetch_recipe_details(recipe_id, recipe_name=None):
                 {"role": "user", "content": recipe_user_prompt},
             ],
             max_tokens=2000,
-            temperature=1,
+            temperature=temp,
         )
         recipes_text = response.choices[0].message['content']
 
@@ -402,9 +403,9 @@ def fetch_recipe_details(recipe_id, recipe_name=None):
         try:
             return process_recipe_output(recipes_text, recipe_id)
         except InvalidOutputFormat as e:
-            print(f"Error processing recipe for {recipe_name}: {e}. Retrying...")
+            print(f"Error processing recipe for {recipe_id}: {e}. Retrying...")
             
-    raise Exception(f"Failed to get a valid response for {recipe_name} after {retries} attempts.")
+    raise Exception(f"Failed to get a valid response for {recipe_id} after {retries} attempts.")
 
 # Meal Plan generation; Pull info from db to create a user prompt for a recipe
 def create_recipe_user_prompt(recipe_id):
