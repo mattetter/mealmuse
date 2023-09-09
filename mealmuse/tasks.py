@@ -31,32 +31,21 @@ def create_app_instance():
 
 @celery.task
 def generate_meal_plan(meal_plan_id, user_id):
-    app = create_app_instance()
-    with app.app_context():
-        try:
 
-            meal_plan = MealPlan.query.filter_by(id=meal_plan_id).first()
-            user = User.query.filter_by(id=user_id).first()
+    # get meal plan from openai
+    meal_plan_output = fetch_meal_plan_from_api(meal_plan_id, user_id)
 
-            # get meal plan from openai
-            meal_plan_output = fetch_meal_plan_from_api(meal_plan, user)
+    # fake api call for testing
+    # meal_plan_output = meal_plan_output_gpt_4_v2 
 
-            # fake api call for testing
-            # meal_plan_output = meal_plan_output_gpt_4_v2
-            
-            # save generated meal plan with user selections to database
-            meal_plan_id = save_meal_plan_output(meal_plan_output, meal_plan, user)
-            # fetch recipe details in parallel
-            
-            fetch_recipe_details_with_context(meal_plan_id)
+    # save generated meal plan with user selections to database
+    meal_plan_id = save_meal_plan_output_with_context(meal_plan_output, meal_plan_id, user_id)
 
-        except Exception as e:
-            db.session.rollback()
-            print(f"Error occurred: {e}")
-            db.session.remove()
-            raise
-        return meal_plan_id
-    
+    # fetch recipe details in parallel
+    fetch_recipe_details_with_context(meal_plan_id)
+
+    return meal_plan_id
+
 
 # Meal Plan generation; wrap the recipe api call in a function to be used in parallel
 def fetch_recipe_details_with_context(meal_plan_id):
@@ -64,12 +53,19 @@ def fetch_recipe_details_with_context(meal_plan_id):
     with app.app_context():
         try:
             meal_plan = MealPlan.query.filter_by(id=meal_plan_id).first()
-            result = [fetch_recipe_details.delay(recipe.id) for recipe in meal_plan.recipes]
+            
+            # create a list of recipe ids in plan
+            recipe_ids = []
+            for recipe in meal_plan.recipes:
+                recipe_ids.append(recipe.id)
+            db.session.remove()
+
         except Exception as e:
             db.session.rollback()
             print(f"Error occurred: {e}")
             db.session.remove()
             raise
+        result = [fetch_recipe_details.delay(recipe_id) for recipe_id in recipe_ids]
         return result
 
 
@@ -169,6 +165,22 @@ def add_available_pantry_items_to_recipe(recipe, user, meal, meal_plan):
     db.session.commit()
 
 
+# Meal Plan generation; create a full user prompt with flask app context
+def create_meal_plan_user_prompt_with_context(user_id, meal_plan_id):
+    app = create_app_instance()
+    with app.app_context():
+        try:
+            user = User.query.filter_by(id=user_id).first()
+            meal_plan = MealPlan.query.filter_by(id=meal_plan_id).first()
+            user_prompt = create_meal_plan_user_prompt(user, meal_plan)
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error occurred: {e}")
+            db.session.remove()
+            raise
+        return user_prompt
+    
+
 # Meal Plan generation; process the user input to create a user prompt in the expected format
 def create_meal_plan_user_prompt(user, meal_plan):
     
@@ -261,10 +273,10 @@ def create_meal_plan_user_prompt(user, meal_plan):
 
 
 # Meal Plan generation; the api call to get a meal plan
-def fetch_meal_plan_from_api(meal_plan, user):
+def fetch_meal_plan_from_api(meal_plan_id, user_id):
     
     # Create the user prompt
-    user_prompt = create_meal_plan_user_prompt(user, meal_plan)
+    user_prompt = create_meal_plan_user_prompt_with_context(user_id, meal_plan_id)
     response = openai.ChatCompletion.create(
         model=MEAL_PLAN_MODEL,
         messages=[
@@ -286,6 +298,21 @@ def fetch_meal_plan_from_api(meal_plan, user):
     return meal_plan_json
     # return meal_plan_output_gpt_4_v2
 
+def save_meal_plan_output_with_context(meal_plan_json, meal_plan_id, user_id):
+    app = create_app_instance()
+    with app.app_context():
+        try:
+
+            meal_plan = MealPlan.query.filter_by(id=meal_plan_id).first()
+            user = User.query.filter_by(id=user_id).first()
+            save_meal_plan_output(meal_plan_json, meal_plan, user)
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error occurred: {e}")
+            db.session.remove()
+            raise
+        return meal_plan_id
+    
 
 # Meal Plan Save: takes the output from the meal plan api call and saves it to the database
 def save_meal_plan_output(meal_plan_json, meal_plan, user):
@@ -346,12 +373,16 @@ def save_meal_plan_output(meal_plan_json, meal_plan, user):
 
 # Meal Plan generation; the api call to get a recipe
 @celery.task
-def fetch_recipe_details(recipe_id):
-    recipe = db.session.query(Recipe).filter_by(id=recipe_id).first()
-    
+def fetch_recipe_details(recipe_id, recipe_name=None):
+
+    # for testing only
+    # recipe = db.session.query(Recipe).filter_by(id=recipe_id).first()
+    # recipe_name = recipe.name
+    # db.session.close()
+
     retries = 2
-    recipe_user_prompt = create_recipe_user_prompt(recipe)
-    recipe_name = recipe.name
+    recipe_user_prompt = create_recipe_user_prompt(recipe_id)
+    
     for _ in range(retries):
             ############################################ RECIPE API CALL ############################################
         response = openai.ChatCompletion.create(
@@ -364,8 +395,10 @@ def fetch_recipe_details(recipe_id):
             temperature=1,
         )
         recipes_text = response.choices[0].message['content']
+
         # fake the api call for testing
         # recipes_text = get_recipe(recipe.name)
+
         try:
             return process_recipe_output(recipes_text, recipe_id)
         except InvalidOutputFormat as e:
@@ -374,111 +407,126 @@ def fetch_recipe_details(recipe_id):
     raise Exception(f"Failed to get a valid response for {recipe_name} after {retries} attempts.")
 
 # Meal Plan generation; Pull info from db to create a user prompt for a recipe
-def create_recipe_user_prompt(recipe):
-    # Placeholder for the result in json format
-    result = {}
+def create_recipe_user_prompt(recipe_id):
+    app = create_app_instance()
+    with app.app_context():
+        try:
+            recipe = db.session.query(Recipe).filter_by(id=recipe_id).first()
+            # Placeholder for the result in json format
+            result = {}
 
-    # get the recipe specific details
-    name = recipe.name
-    cost = recipe.cost
-    time = recipe.time
-    serves = recipe.serves
-    cuisine = recipe.cuisine
+            # get the recipe specific details
+            name = recipe.name
+            cost = recipe.cost
+            time = recipe.time
+            serves = recipe.serves
+            cuisine = recipe.cuisine
 
-    # get the recipe's ingredients
-    ingredients = []
-    for recipe_item in recipe.recipe_items:
-        ingredients.append(recipe_item.item.name)
+            # get the recipe's ingredients
+            ingredients = []
+            for recipe_item in recipe.recipe_items:
+                ingredients.append(recipe_item.item.name)
 
-    # create text file with description and the above details
-    result = {
-    "recipe":{
-        "name": name,
-        "cost": cost,
-        "total time to make": time,
-        "serves": serves,
-        "ingredients from pantry to consider including": ingredients,
-        "cuisine or user requests": cuisine
-    }}
-
+            # create text file with description and the above details
+            result = {
+            "recipe":{
+                "name": name,
+                "cost": cost,
+                "total time to make": time,
+                "serves": serves,
+                "ingredients from pantry to consider including": ingredients,
+                "cuisine or user requests": cuisine
+            }}
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error occurred: {e}")
+            db.session.remove()
+            raise
+    db.session.remove()
     return json.dumps(result)
 
 
 # Meal Plan Save; takes the output from the recipe api call and saves it to the database
 def process_recipe_output(data, recipe_id):
-
-    recipe = db.session.query(Recipe).filter_by(id=recipe_id).first()
-    
-    # clear ingredients used to generate recipe in favor of ones with quantities
-    for item in recipe.recipe_items:
-        db.session.delete(item)
-    db.session.commit()
-
-    # Placeholder for the processed data
-    result = {}
-    # If data is a string, try to deserialize it as JSON
-    if isinstance(data, str):
+    app = create_app_instance()
+    with app.app_context():
         try:
-            data = load_json_with_fractions(data)
-        except json.JSONDecodeError:
-            print(f"invalid json: {data}")
-            raise InvalidOutputFormat("Provided string is not valid JSON")
+            recipe = db.session.query(Recipe).filter_by(id=recipe_id).first()
+            
+            # clear ingredients used to generate recipe in favor of ones with quantities
+            for item in recipe.recipe_items:
+                db.session.delete(item)
+            db.session.commit()
 
-    # Check if the data has 'recipe' key format
-    if "recipe" not in data:
-        print(f"no recipe: {data}")
-        raise InvalidOutputFormat("Output does not have a 'recipe' key")
-    
-    details = data["recipe"]
-    # Validating recipe name
-    if recipe.name == "please generate":
-        name = details.get('name')
-        if not name or not isinstance(name, str):
-            print(f"no name: {name}")
-            raise InvalidOutputFormat("Missing or invalid name for recipe")
-        recipe.name = name
-    
-    # Validating ingredients
-    ingredients = details.get('ingredients', [])
-    if not ingredients or not isinstance(ingredients, list):
-        print(f"no ingredients: {ingredients}")
-        raise InvalidOutputFormat("Missing or invalid ingredients for recipe")
+            # Placeholder for the processed data
+            result = {}
+            # If data is a string, try to deserialize it as JSON
+            if isinstance(data, str):
+                try:
+                    data = load_json_with_fractions(data)
+                except json.JSONDecodeError:
+                    print(f"invalid json: {data}")
+                    raise InvalidOutputFormat("Provided string is not valid JSON")
 
-    # Validate and save each ingredient
-    for ingredient in ingredients:
-        if not all(key in ingredient for key in ['name', 'quantity', 'unit']):
-            print(f"invalid ingredient: {ingredient}")
-            raise InvalidOutputFormat("Invalid ingredient format for recipe")
-        
-        # Check if the ingredient already exists in the database
-        existing_item = db.session.query(Item).filter(Item.name == ingredient['name']).first()
-        if existing_item:
-            item = existing_item
-        else:
-            item = Item(name=ingredient['name'])
-            db.session.add(item)
-            db.session.flush()
-        # Create a RecipeItem instance
-        recipe_item = RecipeItem(recipe_id=recipe.id, item_id=item.id, quantity=ingredient['quantity'], unit=ingredient['unit'])
-        db.session.add(recipe_item)
+            # Check if the data has 'recipe' key format
+            if "recipe" not in data:
+                print(f"no recipe: {data}")
+                raise InvalidOutputFormat("Output does not have a 'recipe' key")
+            
+            details = data["recipe"]
+            # Validating recipe name
+            if recipe.name == "please generate":
+                name = details.get('name')
+                if not name or not isinstance(name, str):
+                    print(f"no name: {name}")
+                    raise InvalidOutputFormat("Missing or invalid name for recipe")
+                recipe.name = name
+            
+            # Validating ingredients
+            ingredients = details.get('ingredients', [])
+            if not ingredients or not isinstance(ingredients, list):
+                print(f"no ingredients: {ingredients}")
+                raise InvalidOutputFormat("Missing or invalid ingredients for recipe")
 
-    # Validating cooking instructions
-    instructions = details.get('cooking_instructions', [])
-    if not instructions or not isinstance(instructions, list):
-        print(f"no instructions: {instructions}")
-        raise InvalidOutputFormat("Missing or invalid cooking instructions for recipe")
+            # Validate and save each ingredient
+            for ingredient in ingredients:
+                if not all(key in ingredient for key in ['name', 'quantity', 'unit']):
+                    print(f"invalid ingredient: {ingredient}")
+                    raise InvalidOutputFormat("Invalid ingredient format for recipe")
+                
+                # Check if the ingredient already exists in the database
+                existing_item = db.session.query(Item).filter(Item.name == ingredient['name']).first()
+                if existing_item:
+                    item = existing_item
+                else:
+                    item = Item(name=ingredient['name'])
+                    db.session.add(item)
+                    db.session.flush()
+                # Create a RecipeItem instance
+                recipe_item = RecipeItem(recipe_id=recipe.id, item_id=item.id, quantity=ingredient['quantity'], unit=ingredient['unit'])
+                db.session.add(recipe_item)
 
-    # Validate each instruction and save to the database
-    for idx, instruction in enumerate(instructions, 1):
-        if not instruction.startswith(f"Step {idx}:"):
-            print(f"invalid step: {instruction}")
-            raise InvalidOutputFormat("Invalid step format for recipe")
-    
-    # add instructions to recipe
-    recipe.instructions = "\n".join(instructions)
+            # Validating cooking instructions
+            instructions = details.get('cooking_instructions', [])
+            if not instructions or not isinstance(instructions, list):
+                print(f"no instructions: {instructions}")
+                raise InvalidOutputFormat("Missing or invalid cooking instructions for recipe")
 
-    db.session.commit()
-    # give the celery worker some time to finish the transaction
+            # Validate each instruction and save to the database
+            for idx, instruction in enumerate(instructions, 1):
+                if not instruction.startswith(f"Step {idx}:"):
+                    print(f"invalid step: {instruction}")
+                    raise InvalidOutputFormat("Invalid step format for recipe")
+            
+            # add instructions to recipe
+            recipe.instructions = "\n".join(instructions)
+
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error occurred: {e}")
+            db.session.remove()
+            raise
     return recipe_id
 
 
@@ -509,8 +557,28 @@ def load_json_with_fractions(s):
 # @celery.task
 # def warmup():
 #     # Perform some simple database queries
-#     some_query = db.session.query(Recipe).limit(1).all()
-#     another_query = db.session.query().limit(1).all()
+#     some_query = db.session.query(Recipe).limit(1)
+#     db.session.remove()
+#     some_query = db.session.query(Recipe).limit(1)
+#     another_query = db.session.query(User).limit(1)
+#     query_three = db.session.query(MealPlan).limit(1)
+#     query_four = db.session.query(Day).limit(1)
+#     query_five = db.session.query(Meal).limit(1)
+#     query_six = db.session.query(Pantry).limit(1)
+#     query_seven = db.session.query(Item).limit(1)
+#     query_eight = db.session.query(ShoppingList).limit(1)
+#     query_nine = db.session.query(RecipeItem).limit(1)
+#     query_ten = db.session.query(ShoppingListItem).limit(1)
+#     query_eleven = db.session.query(PantryItem).limit(1)
+#     query_twelve = db.session.query(UserProfile).limit(1)
+#     query_thirteen = db.session.query(Equipment).limit(1)
+#     query_fourteen = db.session.query(Allergy).limit(1)
+#     query_fifteen = db.session.query(Diet).limit(1)
+#     query_sixteen = db.session.query(users_recipes).limit(1)
+#     query_seventeen = db.session.query(recipes_mealplans).limit(1)
+#     query_eighteen = db.session.query(recipes_meals).limit(1)
 
 #     # Close the session
 #     db.session.remove()
+
+#     # run celery worker with the following command: "celery -A mealmuse.tasks worker --loglevel=info -A mealmuse.celery worker --loglevel=info"

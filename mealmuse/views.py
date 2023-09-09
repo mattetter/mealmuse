@@ -53,6 +53,8 @@ def register():
         password = request.form.get('password')
         confirm_password = request.form.get('confirmation')
 
+
+
         if not username or not password or not confirm_password:
             flash('All fields are required.', 'danger')
         elif password != confirm_password:
@@ -62,6 +64,20 @@ def register():
             new_user = User(username=username, password=hashed_password)
             db.session.add(new_user)
             db.session.commit()
+
+            # Create a pantry for the user
+            pantry = Pantry(user=new_user)
+            db.session.add(pantry)
+
+            # Create a shopping list for the user
+            shopping_list = ShoppingList(user=new_user)
+            db.session.add(shopping_list)
+
+            # Create a user profile for the user
+            user_profile = UserProfile(user=new_user)
+            db.session.add(user_profile)
+            db.session.commit()
+            
             flash('You have been registered successfully.', 'success')
             return redirect(url_for('views.login'))
         
@@ -71,27 +87,25 @@ def register():
 #automatically create tables and log in test user
 @views.before_request
 def before_request():
-        # redirect to login page
-    allowed_routes = ['login', 'register']
-    if request.endpoint not in [f'views.{route}' for route in allowed_routes]:
-        if not current_user.is_authenticated:
-            return redirect(url_for('views.login'))
+    #     # redirect to login page
+    # allowed_routes = ['login', 'register']
+    # if request.endpoint not in [f'views.{route}' for route in allowed_routes]:
+    #     if not current_user.is_authenticated:
+    #         return redirect(url_for('views.login'))
     
-    # # # USE THIS ONLY FOR TESTING PURPOSES
-    # # If there's no user logged in
-    # if not current_user.is_authenticated:
-
+    # # USE THIS ONLY FOR TESTING PURPOSES
+    if not current_user.is_authenticated:
         
-    #     # check if the test user exists
-    #     user = User.query.filter_by(username="testuser").first()
-    #     if not user:
-    #         # Create a test user
-    #         user = User(id=1, username="testuser", email="testuser@email.com", password=generate_password_hash("testpassword"))
-    #         db.session.add(user)
-    #         db.session.commit()
+        # check if the test user exists
+        user = User.query.filter_by(username="testuser").first()
+        if not user:
+            # Create a test user
+            user = User(id=1, username="testuser", email="testuser@email.com", password=generate_password_hash("testpassword"))
+            db.session.add(user)
+            db.session.commit()
 
-    #     # log the user in
-    #     login_user(user)
+        # log the user in
+        login_user(user)
 
 
 @views.route('/pantry')
@@ -99,13 +113,6 @@ def before_request():
 def pantry():
     # Assume we have a current_user object that represents the logged-in user
     user = User.query.get(current_user.id)
-
-    # If the user doesn't have a pantry or a shopping list, create them
-    if not user.pantry:
-        pantry = Pantry(user=user)
-        db.session.add(pantry)
-    
-    db.session.commit()
 
     # Fetch pantry and shopping list items for the current user from the database
     pantry_items = user.pantry.pantry_items if user.pantry else []

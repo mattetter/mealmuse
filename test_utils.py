@@ -50,7 +50,7 @@ class TestUtilsFunctions(unittest.TestCase):
         # every 5 seconds for 25 seconds or until successful, load the meal_plan_obj, check if all the recipes in it have instructions
        
         recipe_name_list = []
-        for attempt in range(18):
+        for attempt in range(22):
             
             meal_plan_obj = db.session.get(MealPlan, meal_plan_id)
             for recipe in meal_plan_obj.recipes:

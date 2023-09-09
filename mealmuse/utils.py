@@ -98,6 +98,7 @@ def add_item_to_list(user, name, quantity, list_type, unit = None):
     if not item:
         item = Item(name=name)
         db.session.add(item)
+        db.session.commit()
 
     # if quantity is a string convert it to a float
     if isinstance(quantity, str):
@@ -116,6 +117,7 @@ def add_item_to_list(user, name, quantity, list_type, unit = None):
     
     elif list_type == 'shopping_list':
         shopping_list = ShoppingList.query.filter_by(user_id=user.id).first()
+        # check if a shoppinglistitem table exists for 
         existing_list_item = ShoppingListItem.query.filter_by(item_id=item.id, shopping_list_id=shopping_list.id).first()
         if existing_list_item:
             # update the quantity
@@ -318,94 +320,94 @@ def remove_recipe_items_from_pantry(user, recipe):
 #             db.session.delete(existing_list_item)
 #             db.session.commit()
 
-# Pantry; add one ingredient to the user's pantry
-def add_ingredient_to_user_pantry(user, ingredient):
-    ingredient_name = ingredient['name']
-    quantity = ingredient['quantity']
-    unit = ingredient['unit']
-    date_added = ingredient.get('date_added', None)
-    expiration_date = ingredient.get('expiration_date', None)
+# # Pantry; add one ingredient to the user's pantry
+# def add_ingredient_to_user_pantry(user, ingredient):
+#     ingredient_name = ingredient['name']
+#     quantity = ingredient['quantity']
+#     unit = ingredient['unit']
+#     date_added = ingredient.get('date_added', None)
+#     expiration_date = ingredient.get('expiration_date', None)
 
-    # Check if the user has a pantry, if not create one
-    pantry = user.pantry
-    if not pantry:
-        pantry = Pantry(user_id=user.id)
-        db.session.add(pantry)
+#     # Check if the user has a pantry, if not create one
+#     pantry = user.pantry
+#     if not pantry:
+#         pantry = Pantry(user_id=user.id)
+#         db.session.add(pantry)
 
-    # Check if the ingredient (as an Item) is already in the database, if not add it
-    item = db.session.query(Item).filter_by(name=ingredient_name).first()
-    if not item:
-        item = Item(name=ingredient_name)
-        db.session.add(item)
+#     # Check if the ingredient (as an Item) is already in the database, if not add it
+#     item = db.session.query(Item).filter_by(name=ingredient_name).first()
+#     if not item:
+#         item = Item(name=ingredient_name)
+#         db.session.add(item)
 
-    # Check if the ingredient (as a PantryItem) is already in the user's pantry
-    existing_pantry_item = db.session.query(PantryItem).join(Pantry).join(Item).filter(Item.name == ingredient_name, Pantry.user_id == user.id).first()
-    if existing_pantry_item:
-        # Create pint quantities for the existing item and the new quantity to be added
-        try:
-            additional_quantity = quantity * ureg(unit)
-        except pint.errors.UndefinedUnitError:
-            # If there's an undefined unit, treat the units as matching
-            additional_quantity = quantity
+#     # Check if the ingredient (as a PantryItem) is already in the user's pantry
+#     existing_pantry_item = db.session.query(PantryItem).join(Pantry).join(Item).filter(Item.name == ingredient_name, Pantry.user_id == user.id).first()
+#     if existing_pantry_item:
+#         # Create pint quantities for the existing item and the new quantity to be added
+#         try:
+#             additional_quantity = quantity * ureg(unit)
+#         except pint.errors.UndefinedUnitError:
+#             # If there's an undefined unit, treat the units as matching
+#             additional_quantity = quantity
                 
-        if existing_pantry_item.unit == unit:
-            existing_pantry_item.quantity += round(quantity, 2)  # round to 2 decimal places
-        else:
-            try:
-                converted_additional_quantity = additional_quantity.to(existing_pantry_item.unit)
-                existing_pantry_item.quantity += round(converted_additional_quantity.magnitude, 2) 
-            # If there's a conversion error, leave the units in the pantry as they are
-            except pint.errors.UndefinedUnitError:
-                existing_pantry_item.quantity += round(additional_quantity, 2)
-    else:
-        pantry_item = PantryItem(item_id=item.id, pantry_id=pantry.id, quantity=quantity, unit=unit, date_added=date_added, expiration_date=expiration_date)
-        db.session.add(pantry_item)
+#         if existing_pantry_item.unit == unit:
+#             existing_pantry_item.quantity += round(quantity, 2)  # round to 2 decimal places
+#         else:
+#             try:
+#                 converted_additional_quantity = additional_quantity.to(existing_pantry_item.unit)
+#                 existing_pantry_item.quantity += round(converted_additional_quantity.magnitude, 2) 
+#             # If there's a conversion error, leave the units in the pantry as they are
+#             except pint.errors.UndefinedUnitError:
+#                 existing_pantry_item.quantity += round(additional_quantity, 2)
+#     else:
+#         pantry_item = PantryItem(item_id=item.id, pantry_id=pantry.id, quantity=quantity, unit=unit, date_added=date_added, expiration_date=expiration_date)
+#         db.session.add(pantry_item)
 
-    db.session.commit()
+#     db.session.commit()
 
 
-# Pantry; remove specified amount of one ingredient
-def remove_ingredient_from_user_pantry(user, ingredient, remove_entirely=False):
-    ingredient_name = ingredient['name']
-    quantity = ingredient['quantity']
-    unit = ingredient['unit']
+# # Pantry; remove specified amount of one ingredient
+# def remove_ingredient_from_user_pantry(user, ingredient, remove_entirely=False):
+#     ingredient_name = ingredient['name']
+#     quantity = ingredient['quantity']
+#     unit = ingredient['unit']
 
-    pantry = user.pantry
-    if not pantry:
-        return
+#     pantry = user.pantry
+#     if not pantry:
+#         return
 
-    item = db.session.query(Item).filter_by(name=ingredient_name).first()
-    if not item:
-        return
+#     item = db.session.query(Item).filter_by(name=ingredient_name).first()
+#     if not item:
+#         return
 
-    existing_pantry_item = db.session.query(PantryItem).join(Pantry).join(Item).filter(Item.name == ingredient_name, Pantry.user_id == user.id).first()
+#     existing_pantry_item = db.session.query(PantryItem).join(Pantry).join(Item).filter(Item.name == ingredient_name, Pantry.user_id == user.id).first()
     
-    if existing_pantry_item:
-        if remove_entirely:
-            db.session.delete(existing_pantry_item)
-            return
+#     if existing_pantry_item:
+#         if remove_entirely:
+#             db.session.delete(existing_pantry_item)
+#             return
         
-       # Create pint quantities for the existing item and the quantity to be removed
-        try:
-            quantity_to_remove = quantity * ureg(unit)
-        except pint.errors.UndefinedUnitError:
-            # If there's an undefined unit, treat the units as matching
-            quantity_to_remove = quantity
+#        # Create pint quantities for the existing item and the quantity to be removed
+#         try:
+#             quantity_to_remove = quantity * ureg(unit)
+#         except pint.errors.UndefinedUnitError:
+#             # If there's an undefined unit, treat the units as matching
+#             quantity_to_remove = quantity
 
-        if existing_pantry_item.unit == unit:
-            existing_pantry_item.quantity -= round(quantity, 2)
-        else:
-            try:
-                converted_quantity_to_remove = quantity_to_remove.to(existing_pantry_item.unit)
-                existing_pantry_item.quantity -= round(converted_quantity_to_remove.magnitude, 2)
-            # If there's a conversion error, leave the units in the pantry as they are
-            except pint.errors.UndefinedUnitError:
-                existing_pantry_item.quantity -= round(quantity_to_remove, 2)
+#         if existing_pantry_item.unit == unit:
+#             existing_pantry_item.quantity -= round(quantity, 2)
+#         else:
+#             try:
+#                 converted_quantity_to_remove = quantity_to_remove.to(existing_pantry_item.unit)
+#                 existing_pantry_item.quantity -= round(converted_quantity_to_remove.magnitude, 2)
+#             # If there's a conversion error, leave the units in the pantry as they are
+#             except pint.errors.UndefinedUnitError:
+#                 existing_pantry_item.quantity -= round(quantity_to_remove, 2)
 
-        if existing_pantry_item.quantity <= 0:
-            db.session.delete(existing_pantry_item)
+#         if existing_pantry_item.quantity <= 0:
+#             db.session.delete(existing_pantry_item)
 
-    db.session.commit()
+#     db.session.commit()
 
 
 # Meal Plan save; initialize a blank meal plan for the user

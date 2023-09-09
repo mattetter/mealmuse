@@ -1,5 +1,7 @@
 # config.py
 import os
+from sqlalchemy.pool import NullPool
+
 
 class Config(object):
     """
@@ -18,6 +20,10 @@ class DevelopmentConfig(Config):
     DEBUG = True
     # SQLALCHEMY_ECHO = True
     SQLALCHEMY_DATABASE_URI = "postgresql://matt:echo@localhost/development_database"
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        # "poolclass": NullPool,
+        'pool_pre_ping': True,
+    }
     # CELERY_ALWAYS_EAGER = True
 
 
