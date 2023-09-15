@@ -482,7 +482,7 @@ def get_meal_plan_details(user, meal_plan_id=None):
         day_dict = {
             "day_id": day.id,
             "day_name": day.name,
-            "date": day.date.strftime("%Y-%m-%d"),
+            "date": day.date,
             "meals": []
         }
 

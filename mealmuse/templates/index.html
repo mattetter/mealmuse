@@ -5,23 +5,29 @@
     <div class="row">
         <!-- Left half of the screen -->
         <div class="col-md-6">
-            <!-- Display today's recipes -->
-            {% if recipes %}
+            <!-- Display today's recipes from the meal plan -->
+            {% if meal_plan %}
                 <h2>Today's Recipes</h2>
-                <ul class="list-group">
-                    {% for recipe in recipes %}
-                        <li class="list-group-item">
-                            <a href="{{ url_for('views.recipe_page', recipe_id=recipe.recipe_id) }}">{{ recipe.recipe_name }}</a>
-                        </li>
+                {% for day in meal_plan.days if day.date == datetime.datetime.today().date() %}
+                    {% for meal in day.meals %}
+                        <h4>{{ meal.meal_name }}</h4>
+                        <ul class="list-group">
+                            {% for recipe in meal.recipes %}
+                                <li class="list-group-item">
+                                    <a href="{{ url_for('views.recipe_page', recipe_id=recipe.recipe_id) }}">{{ recipe.recipe_name }}</a>
+                                </li>
+                            {% endfor %}
+                        </ul>
                     {% endfor %}
-                </ul>
+                {% endfor %}
             {% endif %}
+
         </div>
 
         <!-- Right half of the screen -->
         <div class="col-md-6">
             <!-- Placeholder image for now -->
-            {% if recipes %}
+            {% if meal_plan %}
                 <h4 class="display-5">No image for this recipe</h4>
                 <img src="{{ url_for('static', filename='img/placeholder.jpg') }}" alt="Placeholder Image" class="img-fluid">
             {% endif %}
@@ -30,7 +36,7 @@
 
     <!-- Meal Plan Display -->
     <div class="container mt-4">
-        <h2>Meal Plan</h2>
+        <h2>Current Meal Plan</h2>
         {% if meal_plan %}
             <p>Description: {{ meal_plan.description }}</p>
             {% for day in meal_plan.days %}
