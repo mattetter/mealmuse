@@ -482,6 +482,7 @@ def get_meal_plan_details(user, meal_plan_id=None):
         day_dict = {
             "day_id": day.id,
             "day_name": day.name,
+            "date": day.date.strftime("%Y-%m-%d"),
             "meals": []
         }
 
@@ -513,20 +514,20 @@ def get_meal_plan_details(user, meal_plan_id=None):
 # Data retrieval and display; this function retrieves the details of a list of recipes and returns it in a JSON with ingredients and cooking instructions
 def get_recipe_details_by_ids(recipe_ids):
     # Fetch the recipes from the database using the given IDs
-    recipes = db.session.query(Recipe).filter(Recipe.id.in_(recipe_ids)).all()
+    recipes_db = db.session.query(Recipe).filter(Recipe.id.in_(recipe_ids)).all()
     
-    # If no recipes are found, return an error
-    if not recipes:
-        return {"error": "No recipes found for the given IDs."}
+    # If no recipes are found, return an empty list
+    if not recipes_db:
+        return []
 
-    # Construct the response dictionary
-    response = {"recipes": []}
+    # List to hold the recipes
+    recipes_list = []
     
-    for recipe in recipes:
+    for recipe in recipes_db:
         recipe_data = {
             "recipe_id": recipe.id,
             "recipe_name": recipe.name,
-            "instructions": recipe.instructions.split("\n"),  # Assuming instructions are separated by spaces
+            "instructions": recipe.instructions.split("\n") if recipe.instructions else [],
             "ingredients": []
         }
         
@@ -540,9 +541,12 @@ def get_recipe_details_by_ids(recipe_ids):
             }
             recipe_data["ingredients"].append(ingredient_data)
         
-        response["recipes"].append(recipe_data)
+        recipes_list.append(recipe_data)
 
-    return response
+    return recipes_list
+
+
+
 
 # just a little helper function to go between the previous two  functions
 def extract_recipe_ids(meal_plan_details):

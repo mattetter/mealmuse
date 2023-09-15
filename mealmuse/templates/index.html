@@ -1,95 +1,60 @@
 {% extends "base.html" %}
 
 {% block content %}
-{% with today_date=datetime.datetime.now() %}
-
-
-
-<!-- display meal plans and recipes below-->
-<div class="container">
-    <h2>Meal Plan</h2>
-    {% if meal_plan %}
-        {% for day in meal_plan.days %}
-        <h3>{{ day.day_name }}</h3>
-
-        {% for meal in day.meals %}
-        <div class="card">
-            <div class="card-header">
-                {{ meal.meal_name }}
-            </div>
-            <ul class="list-group list-group-flush">
-                {% for recipe in meal.recipes %}
-                <li class="list-group-item">
-                    {{ recipe.recipe_name }}
-                </li>
-                {% endfor %}
-            </ul>
+<div class="container mt-4">
+    <div class="row">
+        <!-- Left half of the screen -->
+        <div class="col-md-6">
+            <!-- Display today's recipes -->
+            {% if recipes %}
+                <h2>Today's Recipes</h2>
+                <ul class="list-group">
+                    {% for recipe in recipes %}
+                        <li class="list-group-item">
+                            <a href="{{ url_for('views.recipe_page', recipe_id=recipe.recipe_id) }}">{{ recipe.recipe_name }}</a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
         </div>
-        <br>  <!-- Adding a small space between meal cards -->
-        {% endfor %}
 
-        {% endfor %}
-    {% else %}
-        <p>No meal plan generated yet.</p>
-    {% endif %}
-</div>
+        <!-- Right half of the screen -->
+        <div class="col-md-6">
+            <!-- Placeholder image for now -->
+            {% if recipes %}
+                <h4 class="display-5">No image for this recipe</h4>
+                <img src="{{ url_for('static', filename='img/placeholder.jpg') }}" alt="Placeholder Image" class="img-fluid">
+            {% endif %}
+        </div>
+    </div>
 
-<div class="container mt-5">
-    <h2>Recipes</h2>
-    {% if recipes %}
-        Recipes exist!
-        <div id="recipeCarousel" class="carousel slide" data-ride="carousel">
-            
-            <!-- Carousel Indicators -->
-            <ol class="carousel-indicators">
-                {% for recipe in recipes.recipes %}
-                    <li data-target="#recipeCarousel" data-slide-to="{{ loop.index0 }}" {% if loop.first %}class="active"{% endif %}></li>
-                {% endfor %}
-            </ol>
-
-            <!-- Carousel Items -->
-            <div class="carousel-inner">
-                {% for recipe in recipes.recipes %}
-                    <div class="carousel-item {% if loop.first %}active{% endif %}">
-                        <div class="card">
-                            <div class="card-header">
-                                {{ recipe.recipe_name }}
-                            </div>
-                            <div class="card-body">
-                                <h5>Ingredients</h5>
-                                <ul>
-                                {% for ingredient in recipe.ingredients %}
-                                    <li>{{ ingredient.ingredient_name }}: {{ ingredient.quantity }} {{ ingredient.unit }}</li>
-                                {% endfor %}
-                                </ul>
-                                <h5>Instructions</h5>
-                                <ol>
-                                {% for instruction in recipe.instructions %}
-                                    <li>{{ instruction }}</li>
-                                {% endfor %}
-                                </ol>
-                            </div>
+    <!-- Meal Plan Display -->
+    <div class="container mt-4">
+        <h2>Meal Plan</h2>
+        {% if meal_plan %}
+            <p>Description: {{ meal_plan.description }}</p>
+            {% for day in meal_plan.days %}
+                <h3>{{ day.day_name }}</h3>
+                {% for meal in day.meals %}
+                    <div class="card">
+                        <div class="card-header">
+                            {{ meal.meal_name }}
                         </div>
+                        <ul class="list-group list-group-flush">
+                            {% for recipe in meal.recipes %}
+                                <li class="list-group-item">
+                                    <a href="{{ url_for('views.recipe_page', recipe_id=recipe.recipe_id) }}">
+                                        {{ recipe.recipe_name }}
+                                    </a>
+                                </li>
+                            {% endfor %}
+                        </ul>
                     </div>
+                    <br>
                 {% endfor %}
-            </div>
-
-            <!-- Carousel Controls -->
-            <a class="carousel-control-prev" href="#recipeCarousel" role="button" data-slide="prev">
-                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-                <span class="sr-only">Previous</span>
-            </a>
-            <a class="carousel-control-next" href="#recipeCarousel" role="button" data-slide="next">
-                <span class="carousel-control-next-icon" aria-hidden="true"></span>
-                <span class="sr-only">Next</span>
-            </a>
-        </div>
-    {% else %}
-        No recipes available.
-    {% endif %}
-</div>
-
-
-<script src="/static/formValidation.js"></script>
-{% endwith %}
+            {% endfor %}
+        {% else %}
+            <p>No meal plan generated yet.</p>
+        {% endif %}
+    </div>
 {% endblock %}

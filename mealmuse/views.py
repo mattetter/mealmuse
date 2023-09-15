@@ -245,51 +245,29 @@ def index():
     if 'redirect_count' in session:
         del session['redirect_count']
     if request.method == "POST":
-        user_message = request.form["user_message"]   # free form Cuisine
-        selected_days = request.form.getlist('days')  # get the list of selected days
-        selected_days_str = ', '.join(selected_days)
-        selected_diet = request.form.getlist('diet')  # get the list of selected dietary preferences
-        selected_diet_str = ', '.join(selected_diet)
-
-        # error handling for bad api outputs
-        max_retries = 2
-        retries = 0
-        while retries <= max_retries:
-            try:
-                # Call the get_meal_plan function to generate a meal plan, recipes and shopping list
-                try:
-                     meal_plan_obj = get_meal_plan(user_message, selected_days_str, selected_diet_str, current_user)
-                except Exception as e:
-                    raise e
-
-                # fetch the most recent meal plan
-                meal_plan_to_display = get_meal_plan_details(current_user, meal_plan_obj.id)
-                # get recipe details for the recipes in the meal plan
-                recipes_to_display = get_recipe_details_by_ids(extract_recipe_ids(meal_plan_to_display))
-                return render_template('index.html', meal_plan=meal_plan_to_display, recipes=recipes_to_display)
-
-            except InvalidOutputFormat as e:
-                print(f"Error: {e}")
-                retries += 1
-                if retries > max_retries:
-                    return render_template("index.html", error_message="An error occurred while generating your meal plan. Please try again.")
-
-            except Exception as e:
-                print(f"Error: {e}")
-                return render_template("index.html", error_message="An error occurred while generating your meal plan. Please try again.")
 
         return render_template("index.html", error_message="An error occurred while generating your meal plan. Please try again.")
 
     else:  # GET request
-       # Initialize both to None or appropriate defaults
-        meal_plan_to_display = None
-        recipes_to_display = None
+        # get the most recent meal plan for the user
+        serialized_meal_plan = get_meal_plan_details(current_user)
 
-        # Fetch the most recent meal plan
-        meal_plan_to_display = get_meal_plan_details(current_user)
-        # Get recipe details for the recipes in the meal plan
+        # Make a list of today's recipes
+        meal_plan = MealPlan.query.get(serialized_meal_plan["meal_plan_id"])
+        today = date.today()
+        today_recipe_ids = []
 
-        return render_template('index.html', meal_plan=meal_plan_to_display, recipes=recipes_to_display, datetime=datetime)
+        # Check each day in the meal plan
+        for day in meal_plan.days:
+            if day.date == today:
+                # For each meal in the day, get the recipe ids
+                for meal in day.meal:
+                    today_recipe_ids.extend([recipe.id for recipe in meal.recipes])
+        # serialize those recipes and pass them to the template
+        recipes = get_recipe_details_by_ids(today_recipe_ids) if today_recipe_ids else None
+
+
+        return render_template('index.html', meal_plan=serialized_meal_plan, recipes=recipes, datetime=datetime)
 
 
 # Meal Plan: main page for creating and modifying meal plans
