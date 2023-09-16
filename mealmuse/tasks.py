@@ -114,7 +114,7 @@ def swap_out_recipe(recipe_id, user_id):
             new_recipe.cuisine = recipe_cuisine + f" : anything but {old_recipe.name}"
             
             # add ingredients to the new recipe
-            add_available_pantry_items_to_recipe(new_recipe, user, meal, meal_plan)
+            add_available_pantry_items_to_recipe(new_recipe, user, meal_plan)
 
             # Associate the new recipe with the user
             user.recipes.append(new_recipe)
@@ -137,9 +137,43 @@ def swap_out_recipe(recipe_id, user_id):
             raise
         return recipe_details
 
+# celery task to generate a single recipe from scratch using the user's pantry
+@celery.task
+def generate_new_recipe(user_id, recipe_id):
+    app = create_app_instance()
+    with app.app_context():
+        try:
+            user = User.query.filter_by(id=user_id).first()
+            recipe = Recipe.query.filter_by(id=recipe_id).first()
+            profile = UserProfile.query.filter_by(user_id=user_id).first()
+            recipe_temperature = profile.recipe_temperature or 1
+            pantry = user.pantry
+
+            # add text to the cuisine to request that only current pantry items are used
+            recipe.cuisine = recipe.cuisine + " : Strictly only use items listed"
+            if pantry:
+                for pantry_item in pantry.pantry_items:
+                    recipe_item = RecipeItem(recipe_id=recipe_id, item_id=pantry_item.item_id, quantity = pantry_item.quantity, unit = pantry_item.unit)
+                    db.session.add(recipe_item)
+            db.session.flush()
+
+            # Associate the new recipe with the user
+            user.recipes.append(recipe)
+
+            
+            db.session.commit()
+
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error occurred: {e}")
+            db.session.remove()
+            raise
+        # generate the new recipe
+        recipe_details = fetch_recipe_details(recipe_id, recipe_temperature)
+        return recipe_details
             
 # Recipe generation; add available pantry items to a single recipe
-def add_available_pantry_items_to_recipe(recipe, user, meal, meal_plan):
+def add_available_pantry_items_to_recipe(recipe, user, meal_plan):
     from mealmuse.utils import update_item_quantity
     # first add all items in pantry to the recipe
     pantry = user.pantry
@@ -417,11 +451,11 @@ def create_recipe_user_prompt(recipe_id):
             result = {}
 
             # get the recipe specific details
-            name = recipe.name
-            cost = recipe.cost
-            time = recipe.time
-            serves = recipe.serves
-            cuisine = recipe.cuisine
+            name = recipe.name or "please generate"
+            cost = recipe.cost or "any"
+            time = recipe.time or "any"
+            serves = recipe.serves or 1
+            cuisine = recipe.cuisine or "be creative"
 
             # get the recipe's ingredients
             ingredients = []
@@ -454,13 +488,11 @@ def process_recipe_output(data, recipe_id):
         try:
             recipe = db.session.query(Recipe).filter_by(id=recipe_id).first()
             
-            # clear ingredients used to generate recipe in favor of ones with quantities
-            for item in recipe.recipe_items:
-                db.session.delete(item)
+            # remove all existing ingredients from the recipe
+            for recipe_item in recipe.recipe_items:
+                db.session.delete(recipe_item)
             db.session.commit()
-
-            # Placeholder for the processed data
-            result = {}
+            
             # If data is a string, try to deserialize it as JSON
             if isinstance(data, str):
                 try:
@@ -506,6 +538,7 @@ def process_recipe_output(data, recipe_id):
                 # Create a RecipeItem instance
                 recipe_item = RecipeItem(recipe_id=recipe.id, item_id=item.id, quantity=ingredient['quantity'], unit=ingredient['unit'])
                 db.session.add(recipe_item)
+                db.session.flush()
 
             # Validating cooking instructions
             instructions = details.get('cooking_instructions', [])
@@ -582,4 +615,4 @@ def load_json_with_fractions(s):
 #     # Close the session
 #     db.session.remove()
 
-#     # run celery worker with the following command: "celery -A mealmuse.tasks worker --loglevel=info -A mealmuse.celery worker --loglevel=info"
+#     # run celery worker with the following command: "celery -A mealmuse.tasks worker --loglevel=info"

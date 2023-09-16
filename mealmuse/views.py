@@ -9,7 +9,7 @@ from flask_login import login_user, login_required, logout_user, current_user
 from .forms import PantryItemForm, RegistrationForm, LoginForm  # import the forms
 from .models import User, Pantry, Item, ShoppingList, MealPlan, Recipe, PantryItem, ShoppingListItem, Meal, Day, Diet, Allergy, UserProfile  # import the models
 from .utils import get_meal_plan, get_meal_plan_details, get_recipe_details_by_ids, extract_recipe_ids, get_user_profile, create_blank_meal_plan, check_for_incomplete_meal_plan, save_day, add_item_to_list, add_missing_or_all_items_to_shopping_list, remove_recipe_items_from_pantry, update_item_quantity # import the utility functions
-from mealmuse.tasks import swap_out_recipe
+from mealmuse.tasks import swap_out_recipe, generate_new_recipe
 from werkzeug.security import generate_password_hash, check_password_hash
 from .exceptions import InvalidOutputFormat
 
@@ -506,6 +506,43 @@ def change_recipe():
     print("recipe swap task sent to celery")
     # return the user to the meal plan page, the new recipe will  be there once it is done processing
     return redirect(url_for('views.meal_plan'))
+
+
+# Recipe generation; make selections for a single new recipe
+@views.route('/recipe_selections' , methods=['GET', 'POST'])
+def recipe_selections():
+    if request.method == 'POST':
+        return redirect(url_for('/'))
+    else:
+        # handle GET request
+        return render_template('recipe_selections.html', datetime=datetime)
+
+
+# Recipe generation; creates a new recipe with only the ingredients listed in the pantry
+@views.route('/generate_recipe', methods=['GET', 'POST'])
+def generate_recipe():
+    if request.method == 'POST':
+        # Get the selected family size from the form data
+        serves = request.form.get('serves') or None
+        time = request.form.get('time') or None
+        cuisine = request.form.get('cuisine') or None
+        
+        new_recipe = Recipe(
+            name="please generate",
+            cuisine=cuisine,
+            time=time,
+            serves=serves,
+        )
+        db.session.add(new_recipe)
+        db.session.commit()
+
+        user_id = current_user.id
+        recipe_id = new_recipe.id
+        db.session.close()
+
+        recipe = generate_new_recipe.delay(user_id, recipe_id)
+
+        return redirect(url_for('views.recipe_page', recipe_id=new_recipe.id))
 
 
 # Displays a given recipe in the meal plan page

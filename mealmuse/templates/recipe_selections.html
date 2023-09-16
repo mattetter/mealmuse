@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Generate Recipe</h2>
+    <p>Select the desired preferences and generate a recipe based on ingredients you have on hand.</p>
+    <form action="{{ url_for('views.generate_recipe') }}" method="post">
+        <!-- Family Size Selection -->
+        <div class="form-group">
+            <label for="serves">Select Family Size:</label>
+            <select name="serves" id="serves" class="form-control">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3" selected>3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="8">8</option>
+            </select>
+        </div>
+        
+        <!-- Time Selection -->
+        <div class="form-group">
+            <label for="time">Select Preparation Time (in minutes):</label>
+            <select name="time" id="time" class="form-control">
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="30">30</option>
+                <option value="40">40</option>
+                <option value="50">50</option>
+                <option value="60">60</option>
+                <!-- Add more options as needed -->
+            </select>
+        </div>
+        
+        <!-- Cuisine Selection -->
+        <div class="form-group">
+            <label for="cuisine">Describe Desired Cuisine:</label>
+            <textarea id="cuisine" name="cuisine" rows="4" class="form-control"></textarea>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="form-group">
+            <button type="submit" class="btn btn-primary">Generate Recipe</button>
+        </div>
+    </form>
+{% endblock %}
