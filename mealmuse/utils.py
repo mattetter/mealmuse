@@ -472,6 +472,7 @@ def get_meal_plan_details(user, meal_plan_id=None):
     result = {
         "meal_plan_id": meal_plan.id,
         "description": meal_plan.description,
+        "status": meal_plan.status,
         "days": []
     }
 
@@ -583,7 +584,7 @@ def check_for_incomplete_meal_plan(session):
         meal_plan = db.session.query(MealPlan).filter(MealPlan.id == meal_plan_id).first()
         if not meal_plan:
             return
-        if meal_plan.valid == False:
+        if meal_plan.status == 'incomplete':
             db.session.delete(meal_plan)
             print("deleted meal plan")
             db.session.commit()

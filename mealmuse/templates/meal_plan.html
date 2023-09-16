@@ -66,6 +66,7 @@
 <div class="container">
     <h2>Meal Plan</h2>
     {% if meal_plan %}
+    {% if meal_plan["status"] == "complete" %}
         <p>Description: {{ meal_plan["description"] }}</p>  <!-- Display the description here -->
         {% for day in meal_plan["days"] %}
             <h3>{{ day["day_name"] }}</h3>
@@ -89,6 +90,10 @@
                 <br>
             {% endfor %}
         {% endfor %}
+    {% elif meal_plan["status"] == "generating" %}
+        <p>Meal plan is currently being generated. This may take 1-2 minutes</p>
+    {% endif %}
+
     {% else %}
         <p>No meal plan generated yet.</p>
     {% endif %}

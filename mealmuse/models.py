@@ -31,14 +31,17 @@ class UserProfile(db.Model):
 class Allergy(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(80), nullable=False)
+    description = db.Column(db.String(300))
  
 class Diet(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(80), nullable=False)
+    description = db.Column(db.String(300))
 
 class Equipment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(80), nullable=False)
+    description = db.Column(db.String(300))
 
 class Recipe(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -50,13 +53,13 @@ class Recipe(db.Model):
     time = db.Column(db.Integer)
     serves = db.Column(db.Integer)
     tags = db.Column(db.String(200))
-    num_ingredients = db.Column(db.Integer)
+
 
 class MealPlan(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     description = db.Column(db.String(500))
     date_created = db.Column(db.DateTime, nullable=False)
-    valid = db.Column(db.Boolean, default=False)
+    status = db.Column(db.String(80), default="incomplete")
     budget = db.Column(db.Integer, default=150)
     pantry_use = db.Column(db.String(200), default = "Use best judgment regarding usage of recipe ingredients in pantry vs items not in pantry")
     leftovers = db.Column(db.String, default="I'm okay with leftovers, but prefer variety")

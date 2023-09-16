@@ -100,38 +100,38 @@ def register():
 @views.before_request
 def before_request():
         # redirect to login page
-    allowed_routes = ['login', 'register']
-    if request.endpoint not in [f'views.{route}' for route in allowed_routes]:
-        if not current_user.is_authenticated:
-            return redirect(url_for('views.login'))
+    # allowed_routes = ['login', 'register']
+    # if request.endpoint not in [f'views.{route}' for route in allowed_routes]:
+    #     if not current_user.is_authenticated:
+    #         return redirect(url_for('views.login'))
     
     # # USE THIS ONLY FOR TESTING PURPOSES
-    # if not current_user.is_authenticated:
+    if not current_user.is_authenticated:
         
-    #     # check if the test user exists
-    #     user = User.query.filter_by(username="testuser").first()
-    #     if not user:
-    #         # Create a test user
-    #         user = User(id=1, username="testuser", email="testuser@email.com", password=generate_password_hash("testpassword"))
-    #         db.session.add(user)
-    #         db.session.commit()
+        # check if the test user exists
+        user = User.query.filter_by(username="testuser").first()
+        if not user:
+            # Create a test user
+            user = User(id=1, username="testuser", email="testuser@email.com", password=generate_password_hash("testpassword"))
+            db.session.add(user)
+            db.session.commit()
 
-    #         # Create a pantry for the user
-    #         pantry = Pantry(user=user)
-    #         db.session.add(pantry)
+            # Create a pantry for the user
+            pantry = Pantry(user_id=user.id)
+            db.session.add(pantry)
 
-    #         # Create a shopping list for the user
-    #         shopping_list = ShoppingList(user=user)
-    #         db.session.add(shopping_list)
+            # Create a shopping list for the user
+            shopping_list = ShoppingList(user_id=user.id)
+            db.session.add(shopping_list)
 
-    #         # Create a user profile for the user
-    #         user_profile = UserProfile(user=user)
-    #         db.session.add(user_profile)
-    #         db.session.commit()
+            # Create a user profile for the user
+            user_profile = UserProfile(user_id=user.id)
+            db.session.add(user_profile)
+            db.session.commit()
             
 
-    #     # log the user in
-    #     login_user(user)
+        # log the user in
+        login_user(user)
 
 
 @views.route('/pantry')
@@ -338,7 +338,7 @@ def day_selections():
         session['selected_days'] = selected_days
         session['current_day_index'] = 0
 
-        return redirect(url_for('views.budget_selection'))
+        return redirect(url_for('views.select_items'))
 
     return render_template('day_selections.html', datetime=datetime)
 
@@ -457,12 +457,21 @@ def select_items():
         # Check if we have processed all the days
         if session['current_day_index'] >= len(session['selected_days']):
 
+            # mark the meal plan as a valid meal plan so it doesn't get deleted
+            meal_plan = MealPlan.query.get(meal_plan_id)
+            user_id = current_user.id
+            meal_plan.status = "generating"
+            db.session.commit()
+            db.session.close()
+            # generate the meal plan
+            get_meal_plan(meal_plan_id, user_id)
+ 
             # Cleanup session
             del session['selected_days']
             del session['current_day_index']
-            
+            del session['meal_plan_id']
 
-            return redirect(url_for('views.meal_plan_loading'))
+            return redirect(url_for('views.meal_plan'))
     
     current_day = session['selected_days'][session['current_day_index']]
     current_day_datetime = datetime.datetime.strptime(current_day, "%Y-%m-%dT%H:%M:%S.%f")
@@ -502,8 +511,6 @@ def generate_meal_plan():
     #clean up session
     del session['meal_plan_id']
 
-    # set the meal_plan to valid
-    meal_plan.valid = True
     # generate the meal_plan with the current app object
     meal_plan = get_meal_plan(meal_plan.id, user.id)
 

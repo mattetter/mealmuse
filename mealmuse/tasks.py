@@ -377,8 +377,7 @@ def save_meal_plan_output(meal_plan_json, meal_plan, user):
                 cost=recipe_data['cost_in_dollars'],
                 time=recipe_data['time_required'],
                 serves=recipe_data['serves'],
-                cuisine=meal_obj.cuisine,
-                num_ingredients=recipe_data['number_of_ingredients']
+                cuisine=meal_obj.cuisine
             )
             
             # Add the new recipe to the database
@@ -404,6 +403,8 @@ def save_meal_plan_output(meal_plan_json, meal_plan, user):
                 # Create a RecipeItem instance
                 recipe_item = RecipeItem(recipe_id=new_recipe.id, item_id=item.id)
                 db.session.add(recipe_item)
+
+            meal_plan.status = "complete"
             db.session.commit()
 
     return meal_plan.id
