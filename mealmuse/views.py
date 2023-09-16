@@ -100,38 +100,38 @@ def register():
 @views.before_request
 def before_request():
         # redirect to login page
-    # allowed_routes = ['login', 'register', 'report_bug']
-    # if request.endpoint not in [f'views.{route}' for route in allowed_routes]:
-    #     if not current_user.is_authenticated:
-    #         return redirect(url_for('views.login'))
+    allowed_routes = ['login', 'register', 'report_bug']
+    if request.endpoint not in [f'views.{route}' for route in allowed_routes]:
+        if not current_user.is_authenticated:
+            return redirect(url_for('views.login'))
     
     # # USE THIS ONLY FOR TESTING PURPOSES
-    if not current_user.is_authenticated:
+    # if not current_user.is_authenticated:
         
-        # check if the test user exists
-        user = User.query.filter_by(username="testuser").first()
-        if not user:
-            # Create a test user
-            user = User(id=1, username="testuser", email="testuser@email.com", password=generate_password_hash("testpassword"))
-            db.session.add(user)
-            db.session.commit()
+    #     # check if the test user exists
+    #     user = User.query.filter_by(username="testuser").first()
+    #     if not user:
+    #         # Create a test user
+    #         user = User(id=1, username="testuser", email="testuser@email.com", password=generate_password_hash("testpassword"))
+    #         db.session.add(user)
+    #         db.session.commit()
 
-            # Create a pantry for the user
-            pantry = Pantry(user_id=user.id)
-            db.session.add(pantry)
+    #         # Create a pantry for the user
+    #         pantry = Pantry(user_id=user.id)
+    #         db.session.add(pantry)
 
-            # Create a shopping list for the user
-            shopping_list = ShoppingList(user_id=user.id)
-            db.session.add(shopping_list)
+    #         # Create a shopping list for the user
+    #         shopping_list = ShoppingList(user_id=user.id)
+    #         db.session.add(shopping_list)
 
-            # Create a user profile for the user
-            user_profile = UserProfile(user_id=user.id)
-            db.session.add(user_profile)
-            db.session.commit()
+    #         # Create a user profile for the user
+    #         user_profile = UserProfile(user_id=user.id)
+    #         db.session.add(user_profile)
+    #         db.session.commit()
             
 
-        # log the user in
-        login_user(user)
+    #     # log the user in
+    #     login_user(user)
 
 
 @views.route('/pantry')
