@@ -20,29 +20,32 @@
                         </ul>
                     {% endfor %}
                 {% endfor %}
+            {% else %}
+                <h3>No Meal Plan Currently Active</h3>
+                <div class="mt-3">
+                    <a href="{{ url_for('views.meal_plan') }}" class="btn btn-primary">Create a new meal plan</a>
+                </div>
             {% endif %}
             <!-- Button to create a new recipe using ingredients on hand -->
-            <h2>Today's Recipes</h2>
+            <h3>Make something now with what you have on hand</h3>
             <div class="mt-3">
-                <a href="{{ url_for('views.recipe_selections') }}" class="btn btn-primary">Create New Recipe with Ingredients On Hand</a>
+                <a href="{{ url_for('views.recipe_selections') }}" class="btn btn-primary">Create a new recipe</a>
             </div>
 
         </div>
 
         <!-- Right half of the screen -->
         <div class="col-md-6">
-            <!-- Placeholder image for now -->
-            {% if meal_plan %}
-                <h4 class="display-3">Welcome to MealMuse</h4>
-                <img src="{{ url_for('static', filename='img/muse.jpg') }}" alt="Placeholder Image" class="img-fluid">
-            {% endif %}
+            <h4 class="display-3">Welcome to MealMuse</h4>
+            <img src="{{ url_for('static', filename='img/muse.jpg') }}" alt="Placeholder Image" class="img-fluid">  
         </div>
     </div>
 
     <!-- Meal Plan Display -->
     <div class="container mt-4">
-        <h2>Current Meal Plan</h2>
+        
         {% if meal_plan %}
+        <h2>Current Meal Plan</h2>
             <p>Description: {{ meal_plan.description }}</p>
             {% for day in meal_plan.days %}
                 <h3>{{ day.day_name }}</h3>
@@ -64,8 +67,6 @@
                     <br>
                 {% endfor %}
             {% endfor %}
-        {% else %}
-            <p>No meal plan generated yet.</p>
         {% endif %}
     </div>
 {% endblock %}

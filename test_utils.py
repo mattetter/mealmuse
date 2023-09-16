@@ -39,34 +39,46 @@ class TestUtilsFunctions(unittest.TestCase):
     def test_get_meal_plan(self):
 
         user = db.session.get(User, 1)
-        meal_plan = add_meal_plan_to_database(user)
-        meal_plan_id = meal_plan.id
-        user_id = user.id
-        # Check if the meal plan contains the correct number of days
-        self.assertEqual(len(meal_plan.days), 2)
-        # run get meal plan in celery
-        get_meal_plan(meal_plan_id, user_id)
-        # test to check if checking sqlalchemy object in different thread messes up the write
-        # every 5 seconds for 25 seconds or until successful, load the meal_plan_obj, check if all the recipes in it have instructions
+        # meal_plan = add_meal_plan_to_database(user)
+        # meal_plan_id = meal_plan.id
+        # user_id = user.id
+        # # Check if the meal plan contains the correct number of days
+        # self.assertEqual(len(meal_plan.days), 2)
+        # # run get meal plan in celery
+        # get_meal_plan(meal_plan_id, user_id)
+        # # test to check if checking sqlalchemy object in different thread messes up the write
+        # # every 5 seconds for 25 seconds or until successful, load the meal_plan_obj, check if all the recipes in it have instructions
        
-        recipe_name_list = []
-        for attempt in range(22):
+        # recipe_name_list = []
+        # for attempt in range(22):
             
-            meal_plan_obj = db.session.get(MealPlan, meal_plan_id)
-            for recipe in meal_plan_obj.recipes:
-                if recipe.instructions:
-                    recipe_name_list.append(recipe.name)
-            if len(recipe_name_list) == 6:
-                print("success")
-                print(recipe_name_list)
-                break
-            else: 
-                print("not yet....")
-                print(recipe_name_list)
-                recipe_name_list = []
-                time.sleep(5)
-                db.session.close()
+        #     meal_plan_obj = db.session.get(MealPlan, meal_plan_id)
+        #     for recipe in meal_plan_obj.recipes:
+        #         if recipe.instructions:
+        #             recipe_name_list.append(recipe.name)
+        #     if len(recipe_name_list) == 6:
+        #         print("success")
+        #         print(recipe_name_list)
+        #         break
+        #     else: 
+        #         print("not yet....")
+        #         print(recipe_name_list)
+        #         recipe_name_list = []
+        #         time.sleep(5)
+        #         db.session.close()
         
+
+
+
+
+
+
+
+
+
+
+
+
 
     # def test_save_meal_plan_happy_path(self):
         

@@ -150,7 +150,10 @@ def generate_new_recipe(user_id, recipe_id):
             pantry = user.pantry
 
             # add text to the cuisine to request that only current pantry items are used
-            recipe.cuisine = recipe.cuisine + " : Strictly only use items listed"
+            if recipe.cuisine:
+                recipe.cuisine = recipe.cuisine + " : Strictly only use items listed"
+            else:
+                recipe.cuisine = "Strictly only use items listed"
             if pantry:
                 for pantry_item in pantry.pantry_items:
                     recipe_item = RecipeItem(recipe_id=recipe_id, item_id=pantry_item.item_id, quantity = pantry_item.quantity, unit = pantry_item.unit)

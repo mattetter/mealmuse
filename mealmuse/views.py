@@ -49,77 +49,89 @@ def logout():
 @views.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        confirm_password = request.form.get('confirmation')
+        try:
 
+            username = request.form.get('username')
+            password = request.form.get('password')
+            confirm_password = request.form.get('confirmation')
 
+            existing_user = User.query.filter_by(username=username).first()
+            if existing_user:
+                flash('Username already exists. Please choose another one.', 'danger')
+                return render_template('register.html')
 
-        if not username or not password or not confirm_password:
-            flash('All fields are required.', 'danger')
-        elif password != confirm_password:
-            flash('Passwords do not match.', 'danger')
-        else:
-            hashed_password = generate_password_hash(password, method='sha256')
-            new_user = User(username=username, password=hashed_password)
-            db.session.add(new_user)
-            db.session.commit()
+            if not username or not password or not confirm_password:
+                flash('All fields are required.', 'danger')
+            elif password != confirm_password:
+                flash('Passwords do not match.', 'danger')
+            else:
+                hashed_password = generate_password_hash(password, method='sha256')
+                new_user = User(username=username, password=hashed_password)
+                db.session.add(new_user)
+                db.session.commit()
 
-            # Create a pantry for the user
-            pantry = Pantry(user=new_user)
-            db.session.add(pantry)
+                # Create a pantry for the user
+                pantry = Pantry(user_id=new_user.id)
+                db.session.add(pantry)
 
-            # Create a shopping list for the user
-            shopping_list = ShoppingList(user=new_user)
-            db.session.add(shopping_list)
+                # Create a shopping list for the user
+                shopping_list = ShoppingList(user_id=new_user.id)
+                db.session.add(shopping_list)
 
-            # Create a user profile for the user
-            user_profile = UserProfile(user=new_user)
-            db.session.add(user_profile)
-            db.session.commit()
+                # Create a user profile for the user
+                user_profile = UserProfile(user_id=new_user.id)
+                db.session.add(user_profile)
+                db.session.commit()
 
-            flash('You have been registered successfully.', 'success')
-            return redirect(url_for('views.login'))
-        
+                flash('You have been registered successfully.', 'success')
+                return redirect(url_for('views.login'))
+        except Exception as e:
+            flash("An error occurred while processing your request.", 'danger')
+            db.session.rollback()
+            print(f"Error occurred: {e}")
+            db.session.remove()
+            raise
+            return render_template('register.html')
+
     return render_template('register.html')
 
 
 #automatically create tables and log in test user
 @views.before_request
 def before_request():
-    #     # redirect to login page
-    # allowed_routes = ['login', 'register']
-    # if request.endpoint not in [f'views.{route}' for route in allowed_routes]:
-    #     if not current_user.is_authenticated:
-    #         return redirect(url_for('views.login'))
+        # redirect to login page
+    allowed_routes = ['login', 'register']
+    if request.endpoint not in [f'views.{route}' for route in allowed_routes]:
+        if not current_user.is_authenticated:
+            return redirect(url_for('views.login'))
     
     # # USE THIS ONLY FOR TESTING PURPOSES
-    if not current_user.is_authenticated:
+    # if not current_user.is_authenticated:
         
-        # check if the test user exists
-        user = User.query.filter_by(username="testuser").first()
-        if not user:
-            # Create a test user
-            user = User(id=1, username="testuser", email="testuser@email.com", password=generate_password_hash("testpassword"))
-            db.session.add(user)
-            db.session.commit()
+    #     # check if the test user exists
+    #     user = User.query.filter_by(username="testuser").first()
+    #     if not user:
+    #         # Create a test user
+    #         user = User(id=1, username="testuser", email="testuser@email.com", password=generate_password_hash("testpassword"))
+    #         db.session.add(user)
+    #         db.session.commit()
 
-            # Create a pantry for the user
-            pantry = Pantry(user=new_user)
-            db.session.add(pantry)
+    #         # Create a pantry for the user
+    #         pantry = Pantry(user=user)
+    #         db.session.add(pantry)
 
-            # Create a shopping list for the user
-            shopping_list = ShoppingList(user=new_user)
-            db.session.add(shopping_list)
+    #         # Create a shopping list for the user
+    #         shopping_list = ShoppingList(user=user)
+    #         db.session.add(shopping_list)
 
-            # Create a user profile for the user
-            user_profile = UserProfile(user=new_user)
-            db.session.add(user_profile)
-            db.session.commit()
+    #         # Create a user profile for the user
+    #         user_profile = UserProfile(user=user)
+    #         db.session.add(user_profile)
+    #         db.session.commit()
             
 
-        # log the user in
-        login_user(user)
+    #     # log the user in
+    #     login_user(user)
 
 
 @views.route('/pantry')
@@ -251,21 +263,23 @@ def index():
     else:  # GET request
         # get the most recent meal plan for the user
         serialized_meal_plan = get_meal_plan_details(current_user)
+        if serialized_meal_plan:
 
-        # Make a list of today's recipes
-        meal_plan = MealPlan.query.get(serialized_meal_plan["meal_plan_id"])
-        today = date.today()
-        today_recipe_ids = []
+            # Make a list of today's recipes
+            meal_plan = MealPlan.query.get(serialized_meal_plan["meal_plan_id"])
+            today = date.today()
+            today_recipe_ids = []
 
-        # Check each day in the meal plan
-        for day in meal_plan.days:
-            if day.date == today:
-                # For each meal in the day, get the recipe ids
-                for meal in day.meal:
-                    today_recipe_ids.extend([recipe.id for recipe in meal.recipes])
-        # serialize those recipes and pass them to the template
-        recipes = get_recipe_details_by_ids(today_recipe_ids) if today_recipe_ids else None
-
+            # Check each day in the meal plan
+            for day in meal_plan.days:
+                if day.date == today:
+                    # For each meal in the day, get the recipe ids
+                    for meal in day.meal:
+                        today_recipe_ids.extend([recipe.id for recipe in meal.recipes])
+            # serialize those recipes and pass them to the template
+            recipes = get_recipe_details_by_ids(today_recipe_ids) if today_recipe_ids else None
+        else:
+            recipes = None
 
         return render_template('index.html', meal_plan=serialized_meal_plan, recipes=recipes, datetime=datetime)
 
@@ -537,6 +551,7 @@ def generate_recipe():
         db.session.commit()
 
         user_id = current_user.id
+
         recipe_id = new_recipe.id
         db.session.close()
 
