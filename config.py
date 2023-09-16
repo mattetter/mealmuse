@@ -1,31 +1,38 @@
-# config.py
 import os
 from sqlalchemy.pool import NullPool
-
+import logging
 
 class Config(object):
     """
     Common configurations
     """
-    # Put any configurations here that are common across all environments
+    # Common configurations
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SECRET_KEY = os.getenv('SECRET_KEY') or 'thrandomstring'
     CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
     CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/1'
-    
+    # Common Logging Configuration
+    LOGGING_CONFIG = {
+        'level': logging.INFO,
+        'filename': 'common.log',
+        'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    }
+
 class DevelopmentConfig(Config):
     """
     Development configurations
     """
     DEBUG = True
-    # SQLALCHEMY_ECHO = True
     SQLALCHEMY_DATABASE_URI = "postgresql://matt:echo@localhost/development_database"
     SQLALCHEMY_ENGINE_OPTIONS = {
-        # "poolclass": NullPool,
         'pool_pre_ping': True,
     }
-    # CELERY_ALWAYS_EAGER = True
-
+    # Logging Configuration for Development
+    LOGGING_CONFIG = {
+        'level': logging.DEBUG,
+        'filename': 'development.log',
+        'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    }
 
 class TestingConfig(Config):
     """
@@ -35,11 +42,12 @@ class TestingConfig(Config):
     SQLALCHEMY_DATABASE_URI = "postgresql://matt:echo@localhost/development_database"
     WTF_CSRF_ENABLED = False  # Disable CSRF tokens in the Forms for simplicity in testing
     CELERY_ALWAYS_EAGER = True
-    CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
-    CELERY_TASK_ALWAYS_EAGER = True
-    CELERY_TASK_EAGER_PROPAGATES = True
-
-
+    # Logging Configuration for Testing
+    LOGGING_CONFIG = {
+        'level': logging.WARNING,
+        'filename': 'testing.log',
+        'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    }
 
 class ProductionConfig(Config):
     """
@@ -48,3 +56,9 @@ class ProductionConfig(Config):
     DEBUG = False
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')  # Get the DATABASE_URL environment variable
     SQLALCHEMY_ECHO = False
+    # Logging Configuration for Production
+    LOGGING_CONFIG = {
+        'level': logging.ERROR,
+        'filename': 'production.log',
+        'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    }

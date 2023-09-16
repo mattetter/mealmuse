@@ -268,7 +268,6 @@ def index():
         if serialized_meal_plan:
             for day in serialized_meal_plan['days']:
                 if day['date'] == date.today():
-                    print("found today")
                     for meal in day['meals']:
                         if meal['recipes']:
                             today_recipes = True
