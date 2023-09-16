@@ -263,25 +263,22 @@ def index():
     else:  # GET request
         # get the most recent meal plan for the user
         serialized_meal_plan = get_meal_plan_details(current_user)
+        # check if meal plan contains recipes for the current day 
+        today_recipes = False
         if serialized_meal_plan:
+            for day in serialized_meal_plan['days']:
+                if day['date'] == date.today():
+                    print("found today")
+                    for meal in day['meals']:
+                        if meal['recipes']:
+                            today_recipes = True
+                            break
+                    if today_recipes:
+                        break
 
-            # Make a list of today's recipes
-            meal_plan = MealPlan.query.get(serialized_meal_plan["meal_plan_id"])
-            today = date.today()
-            today_recipe_ids = []
 
-            # Check each day in the meal plan
-            for day in meal_plan.days:
-                if day.date == today:
-                    # For each meal in the day, get the recipe ids
-                    for meal in day.meal:
-                        today_recipe_ids.extend([recipe.id for recipe in meal.recipes])
-            # serialize those recipes and pass them to the template
-            recipes = get_recipe_details_by_ids(today_recipe_ids) if today_recipe_ids else None
-        else:
-            recipes = None
 
-        return render_template('index.html', meal_plan=serialized_meal_plan, recipes=recipes, datetime=datetime)
+        return render_template('index.html', meal_plan=serialized_meal_plan, today_recipes=today_recipes, datetime=datetime)
 
 
 # Meal Plan: main page for creating and modifying meal plans

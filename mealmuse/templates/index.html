@@ -8,18 +8,26 @@
             <!-- Display today's recipes from the meal plan -->
             {% if meal_plan %}
                 <h2>Today's Recipes</h2>
-                {% for day in meal_plan.days if day.date == datetime.datetime.today().date() %}
-                    {% for meal in day.meals %}
-                        <h4>{{ meal.meal_name }}</h4>
-                        <ul class="list-group">
-                            {% for recipe in meal.recipes %}
-                                <li class="list-group-item">
-                                    <a href="{{ url_for('views.recipe_page', recipe_id=recipe.recipe_id) }}">{{ recipe.recipe_name }}</a>
-                                </li>
-                            {% endfor %}
-                        </ul>
+                {% if today_recipes == false %}
+                    <h3>No Recipes For Today</h3>
+                    <div class="mt-3">
+                        <a href="{{ url_for('views.meal_plan') }}" class="btn btn-primary">generate some recipes</a>
+                    </div>
+                {% else %}
+                
+                    {% for day in meal_plan.days if day.date == datetime.datetime.today().date() %}
+                        {% for meal in day.meals %}
+                            <h4>{{ meal.meal_name }}</h4>
+                            <ul class="list-group">
+                                {% for recipe in meal.recipes %}
+                                    <li class="list-group-item">
+                                        <a href="{{ url_for('views.recipe_page', recipe_id=recipe.recipe_id) }}">{{ recipe.recipe_name }}</a>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% endfor %}
                     {% endfor %}
-                {% endfor %}
+                {% endif %}
             {% else %}
                 <h3>No Meal Plan Currently Active</h3>
                 <div class="mt-3">
