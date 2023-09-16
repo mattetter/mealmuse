@@ -23,10 +23,10 @@
                     </ul>
                     <!-- Login/Logout Button -->
                     <ul class="navbar-nav ml-auto mt-2">
-                        <li class="nav-item">
-                            <a class="nav-link" href="/bug_report" data-toggle="modal" data-target="#bugReportModal">Report a Bug</a> 
+                        <li class="nav-item"> 
                             {% if current_user.is_authenticated %}
                                 <ul class="navbar-nav me-auto mt-2">  
+                                    <a class="nav-link" href="/bug_report" data-toggle="modal" data-target="#bugReportModal">Report a Bug</a>
                                     <a class="nav-link" href="/profile">Profile</a>
                                     <a class="nav-link" href="/logout">Logout</a>
                                 </ul>
