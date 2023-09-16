@@ -121,7 +121,12 @@ class RecipeItem(db.Model):
     item_id = db.Column(db.Integer, ForeignKey('item.id'), nullable=False)
     item = db.relationship('Item', backref='recipe_items', lazy=True)
 
-
+class BugReport(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    description = db.Column(db.String, nullable=False)
+    steps = db.Column(db.String, nullable=True)
+    timestamp = db.Column(db.DateTime)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
 
 # association tables
 users_recipes = db.Table('users_recipes',
@@ -175,6 +180,8 @@ User.diets = db.relationship('Diet', secondary=user_diets, lazy='subquery',
 
 User.equipment = db.relationship('Equipment', secondary=user_equipment, lazy='subquery',
     backref=db.backref('users', lazy=True))
+
+User.bug_reports = db.relationship('BugReport', backref='user', lazy=True)
 
 Meal.recipes = db.relationship('Recipe', secondary=recipes_meals, lazy='subquery',
     backref=db.backref('meals', lazy=True))

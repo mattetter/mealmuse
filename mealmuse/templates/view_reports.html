@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>All Bug Reports</h1>
+    <ul>
+        {% for report in reports %}
+            <li>
+                <strong>Description:</strong> {{ report.description }}<br>
+                <strong>Steps:</strong> {{ report.steps }}<br>
+                <strong>Reported by:</strong> {{ report.user.username }}<br>
+                <strong>Timestamp</strong> {{ report.timestamp }}<br>
+                
+                <!-- Removal form -->
+                <form action="{{ url_for('views.remove_report') }}" method="post" style="display:inline;">
+                    <input type="hidden" name="report_id" value="{{ report.id }}">
+                    <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                </form>
+                
+                <hr>
+            </li>
+        {% endfor %}
+    </ul>
+{% endblock %}

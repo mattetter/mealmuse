@@ -6,8 +6,8 @@ from datetime import date
 from flask import Blueprint
 from flask import flash, redirect, render_template, request, session, url_for, current_app, jsonify
 from flask_login import login_user, login_required, logout_user, current_user
-from .forms import PantryItemForm, RegistrationForm, LoginForm  # import the forms
-from .models import User, Pantry, Item, ShoppingList, MealPlan, Recipe, PantryItem, ShoppingListItem, Meal, Day, Diet, Allergy, UserProfile  # import the models
+from .forms import RegistrationForm, LoginForm, BugReportForm  # import the forms
+from .models import User, Pantry, Item, ShoppingList, MealPlan, Recipe, PantryItem, ShoppingListItem, Meal, Day, Diet, Allergy, UserProfile, BugReport  # import the models
 from .utils import get_meal_plan, get_meal_plan_details, get_recipe_details_by_ids, extract_recipe_ids, get_user_profile, create_blank_meal_plan, check_for_incomplete_meal_plan, save_day, add_item_to_list, add_missing_or_all_items_to_shopping_list, remove_recipe_items_from_pantry, update_item_quantity # import the utility functions
 from mealmuse.tasks import swap_out_recipe, generate_new_recipe
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -100,7 +100,7 @@ def register():
 @views.before_request
 def before_request():
         # redirect to login page
-    # allowed_routes = ['login', 'register']
+    # allowed_routes = ['login', 'register', 'report_bug']
     # if request.endpoint not in [f'views.{route}' for route in allowed_routes]:
     #     if not current_user.is_authenticated:
     #         return redirect(url_for('views.login'))
@@ -799,5 +799,41 @@ def update_temperatures():
     else:
         flash("Failed to update temperatures.", "danger")
     return redirect(url_for('views.profile'))
+
+
+@views.context_processor
+def inject_bug_report_form():
+    return {'bug_report_form': BugReportForm()}
+
+
+@views.route('/report_bug', methods=['POST'])
+def report_bug():
+    form = BugReportForm()
+    if form.validate_on_submit():
+        report = BugReport(description=form.description.data, steps=form.steps.data, user=current_user, timestamp=datetime.datetime.now())
+        db.session.add(report)
+        db.session.commit()
+        flash('Thank you for your report. We will look into it.', 'success')
+    print(form.errors)
+    referrer = request.referrer
+    return redirect(referrer)
+
+
+@views.route('/view_reports')
+def view_reports():
+    reports = BugReport.query.all()
+    return render_template('view_reports.html', reports=reports)
+
+@views.route('/remove_report', methods=['POST'])
+def remove_report():
+    report_id = request.form.get('report_id')
+    report = BugReport.query.get(report_id)
+    if report:
+        db.session.delete(report)
+        db.session.commit()
+        flash('Report removed successfully.', 'success')
+    else:
+        flash('Report not found.', 'danger')
+    return redirect(url_for('views.view_reports'))
 
 

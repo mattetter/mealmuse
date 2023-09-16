@@ -2,6 +2,7 @@ from flask import Flask
 from flask_login import LoginManager
 from celery import Celery
 from .models import db, User
+import logging
 
 celery = Celery(__name__, broker='redis://127.0.0.1:6379/0', backend='redis://127.0.0.1:6379/1')
 login_manager = LoginManager()
@@ -9,6 +10,10 @@ login_manager = LoginManager()
 def create_app(config_name):
     app = Flask(__name__)
     app.config.from_object(config_name)
+
+    # Set up logging
+    logging_config = app.config.get('LOGGING_CONFIG', {})
+    logging.basicConfig(**logging_config)
 
     # Bind the app with extensions
     db.init_app(app)
