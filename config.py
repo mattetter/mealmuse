@@ -22,7 +22,7 @@ class DevelopmentConfig(Config):
     """
     Development configurations
     """
-    DEBUG = True
+    DEBUG = False
     SQLALCHEMY_DATABASE_URI = "postgresql://matt:echo@localhost/development_database"
     SQLALCHEMY_ENGINE_OPTIONS = {
         'pool_pre_ping': True,
