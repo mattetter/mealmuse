@@ -1,17 +1,17 @@
 # views.py is the file that contains all the routes for our application.
-from . import login_manager, db
+from mealmuse import login_manager, db
 import json
 import datetime
 from datetime import date
 from flask import Blueprint
 from flask import flash, redirect, render_template, request, session, url_for, current_app, jsonify
 from flask_login import login_user, login_required, logout_user, current_user
-from .forms import RegistrationForm, LoginForm, BugReportForm  # import the forms
-from .models import User, Pantry, Item, ShoppingList, MealPlan, Recipe, PantryItem, ShoppingListItem, Meal, Day, Diet, Allergy, UserProfile, BugReport  # import the models
-from .utils import get_meal_plan, get_meal_plan_details, get_recipe_details_by_ids, extract_recipe_ids, get_user_profile, create_blank_meal_plan, check_for_incomplete_meal_plan, save_day, add_item_to_list, add_missing_or_all_items_to_shopping_list, remove_recipe_items_from_pantry, update_item_quantity # import the utility functions
+from mealmuse.forms import RegistrationForm, LoginForm, BugReportForm  # import the forms
+from mealmuse.models import User, Pantry, Item, ShoppingList, MealPlan, Recipe, PantryItem, ShoppingListItem, Meal, Day, Diet, Allergy, UserProfile, BugReport  # import the models
+from mealmuse.utils import get_meal_plan, get_meal_plan_details, get_recipe_details_by_ids, extract_recipe_ids, get_user_profile, create_blank_meal_plan, check_for_incomplete_meal_plan, save_day, add_item_to_list, add_missing_or_all_items_to_shopping_list, remove_recipe_items_from_pantry, update_item_quantity # import the utility functions
 from mealmuse.tasks import swap_out_recipe, generate_new_recipe
 from werkzeug.security import generate_password_hash, check_password_hash
-from .exceptions import InvalidOutputFormat
+from mealmuse.exceptions import InvalidOutputFormat
 
 
 # Create a Blueprint instance

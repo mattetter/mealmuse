@@ -1,7 +1,7 @@
 from flask import Flask
 from flask_login import LoginManager
 from celery import Celery
-from .models import db, User
+from mealmuse.models import db, User
 import logging
 
 celery = Celery(__name__, broker='redis://127.0.0.1:6379/0', backend='redis://127.0.0.1:6379/1')
