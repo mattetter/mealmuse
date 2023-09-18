@@ -235,7 +235,7 @@ def create_recipe_with_text(recipe_text, user_id):
 
         # generate the new recipe
         fetch_recipe_details(new_recipe_id, recipe_temperature)
-        return new_recipe.id
+        return new_recipe_id
 
 
 
@@ -592,13 +592,7 @@ def process_recipe_output(data, recipe_id):
             if not instructions or not isinstance(instructions, list):
                 print(f"no instructions: {instructions}")
                 raise InvalidOutputFormat("Missing or invalid cooking instructions for recipe")
-
-            # Validate each instruction and save to the database
-            for idx, instruction in enumerate(instructions, 1):
-                if not instruction.startswith(f"Step {idx}:"):
-                    print(f"invalid step: {instruction}")
-                    raise InvalidOutputFormat("Invalid step format for recipe")
-            
+ 
             # add instructions to recipe
             recipe.instructions = "\n".join(instructions)
 
