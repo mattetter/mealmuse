@@ -3,9 +3,11 @@ from flask_login import LoginManager
 from celery import Celery
 from mealmuse.models import db, User
 import logging
+from flask_migrate import Migrate
 
 celery = Celery(__name__, broker='redis://127.0.0.1:6379/0', backend='redis://127.0.0.1:6379/1')
 login_manager = LoginManager()
+migrate = Migrate()
 
 def create_app(config_name):
     app = Flask(__name__)
@@ -18,6 +20,7 @@ def create_app(config_name):
     # Bind the app with extensions
     db.init_app(app)
     login_manager.init_app(app)
+    migrate.init_app(app, db)
 
     class ContextTask(celery.Task):
         def __call__(self, *args, **kwargs):
