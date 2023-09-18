@@ -89,6 +89,7 @@ recipes_prompt_35turbo_v1 = """
     "The output prep time, total time and cost should reflect what is actually needed for the entire recipe beginning to end rather than just matching the inputs"
     "If you are not given a recipe name, or the name is listed as 'please generate', please generate a name for the recipe."
     "Ingredients in powder or liquid form should be measured by volume, not by weight."
+    "If given a non-numeric quantity such as "to taste", please use your best judgement to determine the quantity and return a float."
     """
 
 meal_plan_prompt_35turbo_v1 = """ "You are a helpful assistant that generates meal plans. Please generate a meal plan formatted as a dictionary where each day is a key with a nested dictionary as the value. The nested dictionary should have the meals 'Breakfast', 'Lunch', and 'Dinner' as keys, each with a different meal name as the value. The format should look like this: \n\n{\n  \"Monday\": {\n    \"Breakfast\": \"meal name\",\n    \"Lunch\": \"meal name\",\n    \"Dinner\": \"meal name\"\n  },\n  \"Tuesday\": {\n    \"Breakfast\": \"meal name\",\n    \"Lunch\": \"meal name\",\n    \"Dinner\": \"meal name\"\n  },\n  \"Wednesday\": {\n    \"Breakfast\": \"meal name\",\n    \"Lunch\": \"meal name\",\n    \"Dinner\": \"meal name\"\n  }\n}"

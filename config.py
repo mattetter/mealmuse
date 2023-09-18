@@ -12,11 +12,7 @@ class Config(object):
     CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
     CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/1'
     # Common Logging Configuration
-    LOGGING_CONFIG = {
-        'level': logging.INFO,
-        'filename': 'common.log',
-        'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    }
+  # }
 
 class DevelopmentConfig(Config):
     """
@@ -28,11 +24,11 @@ class DevelopmentConfig(Config):
         'pool_pre_ping': True,
     }
     # Logging Configuration for Development
-    LOGGING_CONFIG = {
-        'level': logging.DEBUG,
-        'filename': 'development.log',
-        'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    }
+    # LOGGING_CONFIG = {
+    #     'level': logging.DEBUG,
+    #     'filename': 'development.log',
+    #     'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    # }
 
 class TestingConfig(Config):
     """

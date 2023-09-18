@@ -46,6 +46,7 @@ class Equipment(db.Model):
 class Recipe(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(300), nullable=False)
+    description = db.Column(db.String(3000))
     instructions = db.Column(db.String(1500))
     cuisine = db.Column(db.String(300))
     rating = db.Column(db.Integer)

@@ -6,10 +6,10 @@ from datetime import date
 from flask import Blueprint
 from flask import flash, redirect, render_template, request, session, url_for, current_app, jsonify
 from flask_login import login_user, login_required, logout_user, current_user
-from mealmuse.forms import RegistrationForm, LoginForm, BugReportForm  # import the forms
+from mealmuse.forms import RegistrationForm, LoginForm, BugReportForm, CreateRecipeForm  # import the forms
 from mealmuse.models import User, Pantry, Item, ShoppingList, MealPlan, Recipe, PantryItem, ShoppingListItem, Meal, Day, Diet, Allergy, UserProfile, BugReport  # import the models
 from mealmuse.utils import get_meal_plan, get_meal_plan_details, get_recipe_details_by_ids, extract_recipe_ids, get_user_profile, create_blank_meal_plan, check_for_incomplete_meal_plan, save_day, add_item_to_list, add_missing_or_all_items_to_shopping_list, remove_recipe_items_from_pantry, update_item_quantity # import the utility functions
-from mealmuse.tasks import swap_out_recipe, generate_new_recipe
+from mealmuse.tasks import swap_out_recipe, generate_new_recipe, create_recipe_with_text
 from werkzeug.security import generate_password_hash, check_password_hash
 from mealmuse.exceptions import InvalidOutputFormat
 
@@ -100,38 +100,38 @@ def register():
 @views.before_request
 def before_request():
         # redirect to login page
-    allowed_routes = ['login', 'register', 'report_bug']
-    if request.endpoint not in [f'views.{route}' for route in allowed_routes]:
-        if not current_user.is_authenticated:
-            return redirect(url_for('views.login'))
+    # allowed_routes = ['login', 'register', 'report_bug']
+    # if request.endpoint not in [f'views.{route}' for route in allowed_routes]:
+    #     if not current_user.is_authenticated:
+    #         return redirect(url_for('views.login'))
     
     # # USE THIS ONLY FOR TESTING PURPOSES
-    # if not current_user.is_authenticated:
+    if not current_user.is_authenticated:
         
-    #     # check if the test user exists
-    #     user = User.query.filter_by(username="testuser").first()
-    #     if not user:
-    #         # Create a test user
-    #         user = User(id=1, username="testuser", email="testuser@email.com", password=generate_password_hash("testpassword"))
-    #         db.session.add(user)
-    #         db.session.commit()
+        # check if the test user exists
+        user = User.query.filter_by(username="testuser").first()
+        if not user:
+            # Create a test user
+            user = User(id=1, username="testuser", email="testuser@email.com", password=generate_password_hash("testpassword"))
+            db.session.add(user)
+            db.session.commit()
 
-    #         # Create a pantry for the user
-    #         pantry = Pantry(user_id=user.id)
-    #         db.session.add(pantry)
+            # Create a pantry for the user
+            pantry = Pantry(user_id=user.id)
+            db.session.add(pantry)
 
-    #         # Create a shopping list for the user
-    #         shopping_list = ShoppingList(user_id=user.id)
-    #         db.session.add(shopping_list)
+            # Create a shopping list for the user
+            shopping_list = ShoppingList(user_id=user.id)
+            db.session.add(shopping_list)
 
-    #         # Create a user profile for the user
-    #         user_profile = UserProfile(user_id=user.id)
-    #         db.session.add(user_profile)
-    #         db.session.commit()
+            # Create a user profile for the user
+            user_profile = UserProfile(user_id=user.id)
+            db.session.add(user_profile)
+            db.session.commit()
             
 
-    #     # log the user in
-    #     login_user(user)
+        # log the user in
+        login_user(user)
 
 
 @views.route('/pantry')
@@ -581,12 +581,13 @@ def recipe_page(recipe_id):
 def all_recipes():
     # make a list of all recipes for the current user from the database using the user.recipes relationship
     recipes = []
+    form = CreateRecipeForm()
     for recipe in current_user.recipes:
         recipes.append(recipe)
 
 
     # Render the all_recipes.html page and pass the recipes to it
-    return render_template('all_recipes.html', recipes=recipes)
+    return render_template('all_recipes.html', recipes=recipes, form=form)
 
 
 # Delete a recipe from the database
@@ -814,7 +815,6 @@ def report_bug():
         db.session.add(report)
         db.session.commit()
         flash('Thank you for your report. We will look into it.', 'success')
-    print(form.errors)
     referrer = request.referrer
     return redirect(referrer)
 
@@ -837,3 +837,13 @@ def remove_report():
     return redirect(url_for('views.view_reports'))
 
 
+# Create a new recipe using just a block of text, likely pasted from a website
+@views.route('/create_recipe', methods=['POST'])
+def create_recipe():
+    form = CreateRecipeForm()
+    if form.validate_on_submit():
+        recipe_details = form.recipe_details.data
+        create_recipe_with_text.delay(recipe_details, current_user.id)  # trigger the celery task with the recipe details
+        flash('Recipe processing! It will be available in about 30 seconds.', 'success')
+    referrer = request.referrer
+    return redirect(referrer)

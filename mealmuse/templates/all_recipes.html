@@ -4,20 +4,53 @@
 {% block content %}
 <div class="container mt-4">
     <h1>Your Recipes</h1>
+    <!-- Button trigger modal -->
+    <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#createRecipeModal">
+      Add Your Own Recipes
+    </button>
+    <br>
     {% if recipes %}
       <!-- Display the list of recipes -->
-      <ul class="list-group">
+        <ul class="list-group">
           {% for recipe in recipes %}
-            <li class="list-group-item">
-              <a href="{{ url_for('views.recipe_page', recipe_id=recipe.id) }}">
-                {{ recipe.name }}
-              </a>
-              <a href="{{ url_for('views.delete_recipe', recipe_id=recipe.id) }}" class="btn btn-danger btn-sm float-right">Delete</a>
-            </li>
+              {% if recipe.name != "please generate" %}
+                  <li class="list-group-item">
+                      <a href="{{ url_for('views.recipe_page', recipe_id=recipe.id) }}">
+                          {{ recipe.name }}
+                      </a>
+                      <a href="{{ url_for('views.delete_recipe', recipe_id=recipe.id) }}" class="btn btn-danger btn-sm float-right">Delete</a>
+                  </li>
+              {% endif %}
           {% endfor %}
       </ul>
+    
     {% else %}
       <p class="text-muted">No recipes available.</p>
     {% endif %}
 </div>
+
+<!-- Modal -->
+<div class="modal fade" id="createRecipeModal" tabindex="-1" role="dialog" aria-labelledby="createRecipeModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+      <div class="modal-content">
+          <div class="modal-header">
+              <h5 class="modal-title" id="createRecipeModalLabel">Create a Recipe</h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+              </button>
+          </div>
+          <div class="modal-body">
+              <form id="createRecipeForm" method="POST" action="{{ url_for('views.create_recipe') }}">
+                  {{ form.hidden_tag() }}
+                  <div class="form-group">
+                      {{ form.recipe_details.label(class="form-label") }}
+                      {{ form.recipe_details(class="form-control", rows=10) }}
+                  </div>
+                  <button type="submit" class="btn btn-primary">Submit Recipe</button>
+              </form>
+          </div>
+      </div>
+  </div>
+</div>
+
 {% endblock %}

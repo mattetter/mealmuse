@@ -38,10 +38,7 @@
                 </div>
             </div>
         </nav>
-        <main class="container-fluid py-5 text-center">
-            {% block content %}
-            {% endblock %}
-        </main>
+        
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -49,6 +46,11 @@
                 {% endfor %}
             {% endif %}
         {% endwith %}
+        
+        <main class="container-fluid py-5 text-center">
+            {% block content %}
+            {% endblock %}
+        </main>
 
         
         <script src="https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>

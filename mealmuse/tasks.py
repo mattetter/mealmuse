@@ -174,7 +174,8 @@ def generate_new_recipe(user_id, recipe_id):
         # generate the new recipe
         recipe_details = fetch_recipe_details(recipe_id, recipe_temperature)
         return recipe_details
-            
+
+    
 # Recipe generation; add available pantry items to a single recipe
 def add_available_pantry_items_to_recipe(recipe, user, meal_plan):
     from mealmuse.utils import update_item_quantity
@@ -201,6 +202,41 @@ def add_available_pantry_items_to_recipe(recipe, user, meal_plan):
                 update_item_quantity(recipe_item, quantity, meal_plan_ingredient.unit)
 
     db.session.commit()
+
+
+# Recipe generation: make a new recipe from using only a block of text passed in.
+@celery.task
+def create_recipe_with_text(recipe_text, user_id):
+    app = create_app_instance()
+    with app.app_context():
+        try:
+            user = User.query.filter_by(id=user_id).first()
+            profile = UserProfile.query.filter_by(user_id=user_id).first()
+            recipe_temperature = profile.recipe_temperature or 1
+
+            # create a new recipe
+            new_recipe = Recipe(
+                name="please_process",
+                description=recipe_text
+            )
+            db.session.add(new_recipe)
+            db.session.flush()
+
+            # Associate the new recipe with the user
+            user.recipes.append(new_recipe)
+            new_recipe_id = new_recipe.id
+            db.session.commit()
+            db.session.remove()
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error occurred: {e}")
+            db.session.remove()
+            raise
+
+        # generate the new recipe
+        fetch_recipe_details(new_recipe_id, recipe_temperature)
+        return new_recipe.id
+
 
 
 # Meal Plan generation; create a full user prompt with flask app context
@@ -418,10 +454,8 @@ def fetch_recipe_details(recipe_id, temp=1):
     # recipe = db.session.query(Recipe).filter_by(id=recipe_id).first()
     # recipe_name = recipe.name
     # db.session.close()
-
     retries = 2
     recipe_user_prompt = create_recipe_user_prompt(recipe_id)
-    
     for _ in range(retries):
             ############################################ RECIPE API CALL ############################################
         response = openai.ChatCompletion.create(
@@ -454,28 +488,37 @@ def create_recipe_user_prompt(recipe_id):
             # Placeholder for the result in json format
             result = {}
 
-            # get the recipe specific details
-            name = recipe.name or "please generate"
-            cost = recipe.cost or "any"
-            time = recipe.time or "any"
-            serves = recipe.serves or 1
-            cuisine = recipe.cuisine or "be creative"
+            # check if this is a text-entry recipe that we are just processing
+            if recipe.name == "please_process":
+                recipe.name = "please generate"
+                result = recipe.description
+                recipe.description = ""
+                db.session.commit()
+            
+            # otherwise assume generating a new recipe
+            else:
+                # get the recipe specific details
+                name = recipe.name or "please generate"
+                cost = recipe.cost or "any"
+                time = recipe.time or "any"
+                serves = recipe.serves or 1
+                cuisine = recipe.cuisine or "be creative"
 
-            # get the recipe's ingredients
-            ingredients = []
-            for recipe_item in recipe.recipe_items:
-                ingredients.append(recipe_item.item.name)
+                # get the recipe's ingredients
+                ingredients = []
+                for recipe_item in recipe.recipe_items:
+                    ingredients.append(recipe_item.item.name)
 
-            # create text file with description and the above details
-            result = {
-            "recipe":{
-                "name": name,
-                "cost": cost,
-                "total time to make": time,
-                "serves": serves,
-                "ingredients from pantry to consider including": ingredients,
-                "cuisine or user requests": cuisine
-            }}
+                # create text file with description and the above details
+                result = {
+                "recipe":{
+                    "name": name,
+                    "cost": cost,
+                    "total time to make": time,
+                    "serves": serves,
+                    "ingredients from pantry to consider including": ingredients,
+                    "cuisine or user requests": cuisine
+                }}
         except Exception as e:
             db.session.rollback()
             print(f"Error occurred: {e}")
