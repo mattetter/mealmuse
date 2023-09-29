@@ -205,3 +205,20 @@ meal_plan_user_prompt_gpt4_v1 = """{
 		}]
 	}
 }"""
+
+pantry_items_prompt_gpt_4_v1 = """
+"You are a helpful assistant that generates lists of pantry items as valid JSONs."
+    "Please produce a recipe structured as a dictionary with two nested sections: "
+    "please create a list of pantr items structured in the following format:\n"
+    "{\n"
+    "  'pantry_items': [\n"
+    "     {'name': 'ingredient_name', 'quantity': numeric_amount as a float with no fractions (e.g. 0.5 not 1/2) , 'unit': 'measurement_unit (e.g., tsp)'},\n"
+    "      ...\n"
+    "    ],\n"
+    "}\n"
+    "Ingredients in powder or liquid form should be measured by volume, not by weight."
+    "Also note that only double quotes should be used, no single quotes and all quantities should be expressed as floats."
+    "If given a non-numeric quantity such as "to taste", please return the quantity and units as None"
+    "If no quantity is given, please return the quantity as null"
+    "If no unit is given, please return the unit as null"
+    """

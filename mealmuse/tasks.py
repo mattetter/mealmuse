@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from mealmuse import db, celery
 from mealmuse.models import User, Pantry, Item, ShoppingList, MealPlan, Recipe, Day, Meal, RecipeItem, ShoppingListItem, PantryItem, UserProfile, Equipment, Allergy, Diet, users_recipes, recipes_mealplans, recipes_meals  # import the models if they are used in the utility functions
 from mealmuse.exceptions import InvalidOutputFormat  
-from mealmuse.prompts  import recipes_prompt_35turbo_v1, meal_plan_system_prompt_gpt4_v2
+from mealmuse.prompts  import recipes_prompt_35turbo_v1, meal_plan_system_prompt_gpt4_v2, pantry_items_prompt_gpt_4_v1
 
 from test_data import get_recipe, meal_plan_output_gpt_4_v2
 
@@ -21,7 +21,7 @@ RECIPE_MODEL = "gpt-3.5-turbo-16k"
 MEAL_PLAN_TASK = meal_plan_system_prompt_gpt4_v2
 MEAL_PLAN_MODEL = "gpt-4"
 
-
+PANTRY_ITEMS_TASK = pantry_items_prompt_gpt_4_v1
 
 def create_app_instance():
     from mealmuse import create_app  # Adjust this import to your actual function
@@ -604,6 +604,86 @@ def process_recipe_output(data, recipe_id):
             raise
     return recipe_id
 
+
+# add a list of pantry items to the user's pantry
+@celery.task
+def add_list_of_items(user_id, list_of_items):
+    pantry_items = process_list_of_items(list_of_items)
+    save_pantry_list_to_db(pantry_items, user_id)
+    return user_id
+
+
+# api call to add a list of items to the user's pantry
+def process_list_of_items(list_of_items):
+    response = openai.ChatCompletion.create(
+        model=MEAL_PLAN_MODEL,
+        messages=[
+            {"role": "system", "content": PANTRY_ITEMS_TASK},
+            {"role": "user", "content": list_of_items},
+        ],
+        max_tokens=3000,
+        temperature=1,
+    )
+    ingredient_list_text = response.choices[0].message['content']
+
+    return ingredient_list_text
+
+
+# process the list of items to be added to the user's pantry
+def save_pantry_list_to_db(pantry_items, user_id):
+
+    app = create_app_instance()
+    with app.app_context():
+        try:
+             # If data is a string, try to deserialize it as JSON
+            if isinstance(pantry_items, str):
+                try:
+                    pantry_items = load_json_with_fractions(pantry_items)
+                except json.JSONDecodeError:
+                    print(f"invalid json: {pantry_items}")
+                    raise InvalidOutputFormat("Provided string is not valid JSON")
+                
+            # get the user and their pantry
+            user = User.query.filter_by(id=user_id).first()
+            pantry = user.pantry
+            if not pantry:
+                pantry = Pantry(user_id=user_id)
+                db.session.add(pantry)
+                db.session.flush()
+
+            # Validating ingredients
+            pantry_item_list = pantry_items.get('pantry_items', [])
+            if not pantry_item_list or not isinstance(pantry_item_list, list):
+                print(f"no ingredients: {pantry_item_list}")
+                raise InvalidOutputFormat("Missing or invalid items for pantry")
+
+            # Validate and save each ingredient
+            for pantry_item in pantry_item_list:
+                if not all(key in pantry_item for key in ['name', 'quantity', 'unit']):
+                    print(f"invalid ingredient: {pantry_item}")
+                    raise InvalidOutputFormat("Invalid pantry item format")
+                
+                # Check if the ingredient already exists in the database
+                existing_item = db.session.query(Item).filter(Item.name == pantry_item['name']).first()
+                if existing_item:
+                    item = existing_item
+                else:
+                    item = Item(name=pantry_item['name'])
+                    db.session.add(item)
+                    db.session.flush()
+                # Create a PantryItem instance
+                new_pantry_item = PantryItem(pantry_id=pantry.id, item_id=item.id, quantity=pantry_item['quantity'], unit=pantry_item['unit'])
+                db.session.add(new_pantry_item)
+                db.session.flush()
+
+            db.session.commit()
+
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error occurred: {e}")
+            db.session.remove()
+            raise
+    return user_id
 
 
 def fraction_to_decimal(match):

@@ -6,10 +6,10 @@ from datetime import date
 from flask import Blueprint
 from flask import flash, redirect, render_template, request, session, url_for, current_app, jsonify
 from flask_login import login_user, login_required, logout_user, current_user
-from mealmuse.forms import RegistrationForm, LoginForm, BugReportForm, CreateRecipeForm  # import the forms
+from mealmuse.forms import RegistrationForm, LoginForm, BugReportForm, CreateRecipeForm, AddIngredientListForm  # import the forms
 from mealmuse.models import User, Pantry, Item, ShoppingList, MealPlan, Recipe, PantryItem, ShoppingListItem, Meal, Day, Diet, Allergy, UserProfile, BugReport  # import the models
 from mealmuse.utils import get_meal_plan, get_meal_plan_details, get_recipe_details_by_ids, extract_recipe_ids, get_user_profile, create_blank_meal_plan, check_for_incomplete_meal_plan, save_day, add_item_to_list, add_missing_or_all_items_to_shopping_list, remove_recipe_items_from_pantry, update_item_quantity # import the utility functions
-from mealmuse.tasks import swap_out_recipe, generate_new_recipe, create_recipe_with_text
+from mealmuse.tasks import swap_out_recipe, generate_new_recipe, create_recipe_with_text, add_list_of_items
 from werkzeug.security import generate_password_hash, check_password_hash
 from mealmuse.exceptions import InvalidOutputFormat
 
@@ -99,39 +99,39 @@ def register():
 #automatically create tables and log in test user
 @views.before_request
 def before_request():
-        # redirect to login page
-    allowed_routes = ['login', 'register', 'report_bug']
-    if request.endpoint not in [f'views.{route}' for route in allowed_routes]:
-        if not current_user.is_authenticated:
-            return redirect(url_for('views.login'))
+    #     # redirect to login page
+    # allowed_routes = ['login', 'register', 'report_bug']
+    # if request.endpoint not in [f'views.{route}' for route in allowed_routes]:
+    #     if not current_user.is_authenticated:
+    #         return redirect(url_for('views.login'))
     
     # # USE THIS ONLY FOR TESTING PURPOSES
-    # if not current_user.is_authenticated:
+    if not current_user.is_authenticated:
         
-    #     # check if the test user exists
-    #     user = User.query.filter_by(username="testuser").first()
-    #     if not user:
-    #         # Create a test user
-    #         user = User(id=1, username="testuser", email="testuser@email.com", password=generate_password_hash("testpassword"))
-    #         db.session.add(user)
-    #         db.session.commit()
+        # check if the test user exists
+        user = User.query.filter_by(username="testuser").first()
+        if not user:
+            # Create a test user
+            user = User(id=1, username="testuser", email="testuser@email.com", password=generate_password_hash("testpassword"))
+            db.session.add(user)
+            db.session.commit()
 
-    #         # Create a pantry for the user
-    #         pantry = Pantry(user_id=user.id)
-    #         db.session.add(pantry)
+            # Create a pantry for the user
+            pantry = Pantry(user_id=user.id)
+            db.session.add(pantry)
 
-    #         # Create a shopping list for the user
-    #         shopping_list = ShoppingList(user_id=user.id)
-    #         db.session.add(shopping_list)
+            # Create a shopping list for the user
+            shopping_list = ShoppingList(user_id=user.id)
+            db.session.add(shopping_list)
 
-    #         # Create a user profile for the user
-    #         user_profile = UserProfile(user_id=user.id)
-    #         db.session.add(user_profile)
-    #         db.session.commit()
+            # Create a user profile for the user
+            user_profile = UserProfile(user_id=user.id)
+            db.session.add(user_profile)
+            db.session.commit()
             
 
-    #     # log the user in
-    #     login_user(user)
+        # log the user in
+        login_user(user)
 
 
 @views.route('/pantry')
@@ -139,6 +139,7 @@ def before_request():
 def pantry():
     # Assume we have a current_user object that represents the logged-in user
     user = User.query.get(current_user.id)
+    form = AddIngredientListForm()
 
     if not user.pantry:
         pantry = Pantry(user=user)
@@ -148,7 +149,7 @@ def pantry():
     # Fetch pantry and shopping list items for the current user from the database
     pantry_items = user.pantry.pantry_items if user.pantry else []
 
-    return render_template('pantry.html', pantry_items=pantry_items)
+    return render_template('pantry.html', pantry_items=pantry_items, form=form)
 
 
 
@@ -847,3 +848,16 @@ def create_recipe():
         flash('Recipe processing! It will be available in about 30 seconds.', 'success')
     referrer = request.referrer
     return redirect(referrer)
+
+
+# Add a free-form list of ingredients to the pantry
+@views.route('/add_ingredient_list', methods=['POST'])
+def add_ingredient_list():
+    form = AddIngredientListForm()
+    if form.validate_on_submit():
+        list_of_items = form.list_of_items.data
+        add_list_of_items.delay(current_user.id, list_of_items)  # trigger the celery task with the recipe details
+        flash('Processing pantry items, they will show in list in about 30 seconds.', 'success')
+    referrer = request.referrer
+    return redirect(referrer)
+

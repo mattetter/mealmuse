@@ -1,6 +1,10 @@
 {% extends "base.html" %}
 
 {% block content %}
+ <!-- Button trigger modal -->
+ <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addIngredientsModal">
+    Add list of ingredients as free text
+</button>
 <div class="container mt-4">
     <!-- Pantry Section -->
     <h3 class="h4 text-center">Pantry</h3>
@@ -15,7 +19,7 @@
     <ul class="list-group text-left">
     {% for item in pantry_items %}
         <li class="list-group-item d-flex justify-content-between align-items-center">
-            <span>{{ item.item.name }}, {{ item.quantity }} {{ item.unit or '' }}</span>
+            <span>{{ item.item.name }} , {{ item.quantity or '' }} {{ item.unit or '' }}</span>
             <form action="/remove_item/pantry/{{ item.id }}" class="d-inline item-form">
                 <button type="submit" class="btn btn-link btn-sm" title="Remove all of this item">Remove</button>
             </form>
@@ -23,4 +27,29 @@
     {% endfor %}
     </ul>
 </div>
+
+<!-- Copy-paste recipe Modal -->
+<div class="modal fade" id="addIngredientsModal" tabindex="-1" role="dialog" aria-labelledby="addIngredientsModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addIngredientsModalLabel">Add Ingredients to Pantry</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="AddIngredientListForm" method="POST" action="{{ url_for('views.add_ingredient_list') }}">
+                    {{ form.hidden_tag() }}
+                    <div class="form-group">
+                        {{ form.list_of_items.label(class="form-label") }}
+                        {{ form.list_of_items(class="form-control", rows=10) }}
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Ingredients</button>
+                </form>
+            </div>
+        </div>
+    </div>
+  </div>
+
 {% endblock %}
