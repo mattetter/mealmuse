@@ -671,10 +671,15 @@ def save_pantry_list_to_db(pantry_items, user_id):
                     item = Item(name=pantry_item['name'])
                     db.session.add(item)
                     db.session.flush()
-                # Create a PantryItem instance
-                new_pantry_item = PantryItem(pantry_id=pantry.id, item_id=item.id, quantity=pantry_item['quantity'], unit=pantry_item['unit'])
-                db.session.add(new_pantry_item)
-                db.session.flush()
+                # Create a PantryItem instance if one does not already exist otherwise increase the quantity
+                existing_pantry_item = db.session.query(PantryItem).filter(PantryItem.pantry_id == pantry.id, PantryItem.item_id == item.id).first()
+                if existing_pantry_item:
+                    existing_pantry_item.quantity += pantry_item['quantity']
+                    existing_pantry_item.unit = pantry_item['unit']
+                else:
+                    new_pantry_item = PantryItem(pantry_id=pantry.id, item_id=item.id, quantity=pantry_item['quantity'], unit=pantry_item['unit'])
+                    db.session.add(new_pantry_item)
+                    db.session.flush()
 
             db.session.commit()
 
